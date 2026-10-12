@@ -1,0 +1,68 @@
+/* Scoped below this plugin's panel; nothing here can restyle the app itself. */
+[data-plugin-panel="dev.auton.browser-panel:browser"] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-toolbar] {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-action] {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
+  border-radius: var(--agent-radius-sm, 4px);
+  background: var(--agent-color-bg-elevated, transparent);
+  color: var(--agent-color-text-primary, inherit);
+  cursor: pointer;
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-action]:hover:not(:disabled) {
+  background: var(--agent-state-hover-bg, rgba(127, 127, 127, 0.12));
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-action]:disabled {
+  color: var(--agent-color-text-muted, gray);
+  cursor: default;
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-address] {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
+  border-radius: var(--agent-radius-sm, 4px);
+  background: var(--agent-color-bg, transparent);
+  color: var(--agent-color-text-primary, inherit);
+  font-size: var(--agent-typography-size-sm, 13px);
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-error] {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--agent-color-danger, #c0392b);
+  font-size: var(--agent-typography-size-xs, 12px);
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-placeholder] {
+  margin: 0;
+  padding: 16px;
+  color: var(--agent-color-text-secondary, gray);
+  font-size: var(--agent-typography-size-sm, 13px);
+}
+
+/* The host lays the native web view exactly over this box. */
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-view] {
+  flex: 1;
+  min-height: 160px;
+}

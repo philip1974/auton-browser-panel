@@ -1,0 +1,15 @@
+{
+  "id": "dev.auton.browser-panel",
+  "name": "BrowserPanel",
+  "version": "0.1.0",
+  "description": "Browse the web in an Auton Knowledge panel; the Agent can read the current page and your selection.",
+  "runtime": {
+    "target": "auton-knowledge",
+    "apiVersion": 1,
+    "entry": "main.mjs"
+  },
+  "permissions": [
+    "web.browse",
+    "agent.tools"
+  ]
+}
