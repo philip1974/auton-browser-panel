@@ -6,7 +6,7 @@ Browse the web inside Auton Knowledge. The Agent can read the page you are looki
 
 ## Requirements
 
-- Auton Knowledge with the `web.browse` runtime-plugin capability (Auton topic 1342 or later). Older builds reject the `web.browse` permission and will not install this plugin.
+- An Auton Knowledge version that supports the `web.browse` runtime-plugin permission. Older versions reject the permission and will not install this plugin.
 
 ## Install
 

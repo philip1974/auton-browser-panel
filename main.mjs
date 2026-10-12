@@ -1,6 +1,6 @@
 // Browser Panel — an Auton Knowledge runtime plugin.
 // Browse the web in a right-dock panel; the Agent can read the current page and your selection.
-// Needs the `web.browse` capability (Auton Knowledge with topic 1342) and `agent.tools`.
+// Needs the `web.browse` permission (an Auton Knowledge version that supports it) and `agent.tools`.
 
 const PANEL_ID = 'browser';
 const DEFAULT_PAGE_CHARS = 40_000;
