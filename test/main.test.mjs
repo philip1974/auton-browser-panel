@@ -286,7 +286,7 @@ describe('semantic browser interaction tools', () => {
     const result = await app.tools.get('browser_act').run(click, { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } });
 
     expect(result).toContain('Status: committed');
-    expect(result).toMatch(/observe again/u);
+    expect(result).toMatch(/重新观察/u);
     expect(result).not.toContain('<<<BEGIN UNTRUSTED WEB CONTENT>>>');
   });
 

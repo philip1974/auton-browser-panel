@@ -588,7 +588,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       const receipt = await view.act(request, authorization);
       if (receipt.status === 'unknown') return 'Status: unknown\n页面动作的结果无法确认。请停止，不要自动重试；先让用户检查页面。';
       if (receipt.afterObservation === undefined) {
-        return `Status: ${receipt.status}\nThe action ran, but the page changed afterwards (for example the user navigated), so no page is returned: observe again before the next action.`;
+        return `Status: ${receipt.status}\n动作已执行，但页面随后变了（例如用户自己导航了），所以没有附上页面；下一步前请重新观察。`;
       }
       return formatObservation(receipt.afterObservation, [`Status: ${receipt.status}`]);
     } catch (cause) {
