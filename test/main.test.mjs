@@ -138,6 +138,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  document.documentElement.lang = 'en';
 });
 
 
@@ -241,6 +242,7 @@ describe('panel', () => {
     const input = container.querySelector('input[data-browser-address]');
     input.focus();
     input.value = 'half-typed';
+    input.dispatchEvent(new Event('input'));
 
     app.handles[0].emit({ url: 'https://example.com/b', title: '', canGoBack: false, canGoForward: false, loading: true, crashed: false });
 
@@ -465,5 +467,257 @@ describe('edge cases', () => {
     first.cleanup();
 
     await expect(app.tools.get('browser_get_page').run({})).resolves.toContain('UNTRUSTED');
+  });
+});
+
+const idle = { title: 'Example', canGoBack: false, canGoForward: false, loading: false, crashed: false };
+
+function typeAndPress(input, value, key) {
+  input.focus();
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
+  input.dispatchEvent(new KeyboardEvent('keydown', { key }));
+}
+
+describe('address bar', () => {
+  it('should show the committed address after Enter even while the input keeps focus', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+
+    typeAndPress(input, 'example.com', 'Enter');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/' });
+
+    expect(document.activeElement).toBe(input);
+    expect(input.value).toBe('https://example.com/');
+  });
+
+  it('should follow in-page navigation while the input is focused but not edited', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+
+    input.focus();
+    app.handles[0].emit({ ...idle, url: 'https://example.com/b' });
+
+    expect(input.value).toBe('https://example.com/b');
+  });
+
+  it('should restore the current address when Escape is pressed', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+
+    typeAndPress(input, 'typed junk', 'Escape');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a', title: 'again' });
+
+    expect(input.value).toBe('https://example.com/a');
+    expect(app.handles[0].calls).toEqual([]);
+  });
+
+  it('should say that plain words are not a web address and keep the scheme message for other schemes', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    const error = container.querySelector('[data-browser-error]');
+    app.handles[0].navigateError = codedError('URL_NOT_ALLOWED');
+
+    typeAndPress(input, 'hello world', 'Enter');
+    await tick();
+    expect(error.textContent).toMatch(/not a web address/u);
+    expect(error.textContent).toContain('hello world');
+
+    typeAndPress(input, 'ftp://example.com/x', 'Enter');
+    await tick();
+    expect(error.textContent).toMatch(/Only http and https/u);
+  });
+});
+
+describe('loading', () => {
+  it('should turn reload into stop while a page loads and show progress', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const button = container.querySelector('[data-browser-action="reload"]');
+    const progress = container.querySelector('[data-browser-progress]');
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/slow', loading: true });
+    expect(button.getAttribute('aria-label')).toBe('Stop');
+    expect(progress.hidden).toBe(false);
+    button.click();
+    await tick();
+    expect(app.handles[0].calls).toEqual([['stop']]);
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/slow' });
+    expect(button.getAttribute('aria-label')).toBe('Reload');
+    expect(progress.hidden).toBe(true);
+    button.click();
+    await tick();
+    expect(app.handles[0].calls).toEqual([['stop'], ['reload']]);
+  });
+});
+
+describe('load failures', () => {
+  it('should explain common network errors in words and keep the code', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const error = container.querySelector('[data-browser-error]');
+
+    app.handles[0].emit({ ...idle, url: 'https://nope.invalid/', error: 'ERR_NAME_NOT_RESOLVED' });
+    expect(error.textContent).toMatch(/could not find/iu);
+    expect(error.textContent).toContain('ERR_NAME_NOT_RESOLVED');
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/', error: 'ERR_INTERNET_DISCONNECTED' });
+    expect(error.textContent).toMatch(/offline|internet/iu);
+  });
+
+  it('should tell the Agent the page failed to load instead of reading the error page', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://nope.invalid/', error: 'ERR_NAME_NOT_RESOLVED' });
+
+    const page = await app.tools.get('browser_get_page').run({});
+    const selection = await app.tools.get('browser_get_selection').run({});
+
+    for (const result of [page, selection]) {
+      expect(result).toMatch(/加载失败/u);
+      expect(result).toContain('ERR_NAME_NOT_RESOLVED');
+      expect(result).not.toContain('UNTRUSTED');
+    }
+    expect(app.handles[0].calls).toEqual([]);
+  });
+
+  it('should tell the Agent when the page is still loading', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/next', loading: true });
+
+    const page = await app.tools.get('browser_get_page').run({});
+
+    expect(page).toMatch(/still loading https:\/\/example\.com\/next/u);
+    expect(page).toContain('UNTRUSTED');
+  });
+});
+
+describe('language', () => {
+  it('should label the panel in the app language', async () => {
+    document.documentElement.lang = 'zh';
+    const { app } = await load();
+    const { container } = renderPanel(app);
+
+    expect(container.querySelector('[data-browser-action="back"]').getAttribute('aria-label')).toBe('后退');
+    expect(container.querySelector('input[data-browser-address]').getAttribute('placeholder')).toMatch(/网址/u);
+    expect(container.querySelector('[data-browser-placeholder]').textContent).toMatch(/Agent/u);
+  });
+
+  it('should fall back to English for an unknown language and cover ja and ko', async () => {
+    const labels = {};
+    for (const lang of ['fr', 'ja', 'ko']) {
+      document.documentElement.lang = lang;
+      const { app } = await load();
+      const { container } = renderPanel(app);
+      labels[lang] = container.querySelector('[data-browser-action="reload"]').getAttribute('aria-label');
+    }
+    expect(labels).toEqual({ fr: 'Reload', ja: '再読み込み', ko: '새로고침' });
+  });
+});
+
+describe('every language', () => {
+  it('should produce a distinct non-empty message for every panel situation', async () => {
+    for (const lang of ['en', 'zh', 'ja', 'ko']) {
+      document.documentElement.lang = lang;
+      const { app } = await load();
+      const { container } = renderPanel(app);
+      const input = container.querySelector('input[data-browser-address]');
+      const error = container.querySelector('[data-browser-error]');
+      const seen = new Set();
+      const see = () => { expect(error.textContent).not.toBe(''); seen.add(error.textContent); };
+      const handle = app.handles[0];
+
+      handle.navigateError = codedError('URL_NOT_ALLOWED');
+      typeAndPress(input, 'hello', 'Enter'); await tick(); see();
+      typeAndPress(input, 'mailto:x', 'Enter'); await tick(); see();
+      handle.navigateError = codedError('VIEW_NOT_FOUND');
+      typeAndPress(input, 'example.com', 'Enter'); await tick(); see();
+      handle.emit({ ...idle, url: 'https://x/', crashed: true }); see();
+      for (const code of ['ERR_NAME_NOT_RESOLVED', 'ERR_INTERNET_DISCONNECTED', 'ERR_CONNECTION_REFUSED', 'ERR_TIMED_OUT',
+        'ERR_CONNECTION_RESET', 'ERR_CERT_AUTHORITY_INVALID', 'ERR_BLOCKED_BY_RESPONSE']) {
+        handle.emit({ ...idle, url: 'https://x/', error: code }); see();
+      }
+      expect(seen.size).toBe(11);
+      document.body.innerHTML = '';
+      const bare = await load({ webViews: false });
+      expect(renderPanel(bare.app).container.textContent).toMatch(/web\.browse/u);
+    }
+  });
+});
+
+describe('submitted address', () => {
+  it('should keep showing the submitted address while the old page is still current', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+
+    typeAndPress(input, 'example.com/slow', 'Enter');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a', loading: true });
+    expect(input.value).toBe('example.com/slow');
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/slow', loading: true });
+    expect(input.value).toBe('https://example.com/slow');
+  });
+
+  it('should go back to the current address when the load is stopped before it commits', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+
+    typeAndPress(input, 'example.com/slow', 'Enter');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a', loading: true });
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a', loading: false });
+
+    expect(input.value).toBe('https://example.com/a');
+  });
+});
+
+describe('progress placement', () => {
+  it('should put the progress bar inside the toolbar so the web view never moves', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+
+    expect(container.querySelector('[data-browser-toolbar] [data-browser-progress]')).not.toBeNull();
+  });
+});
+
+describe('read timeout while loading', () => {
+  it('should say the page is still loading when a read times out during a load', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/slow', loading: true });
+    app.handles[0].readError = codedError('READ_TIMEOUT');
+
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/仍在加载/u);
+    await expect(app.tools.get('browser_get_selection').run({})).resolves.toMatch(/仍在加载/u);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/slow' });
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/过大或卡住/u);
+  });
+});
+
+describe('toolbar icons', () => {
+  it('should draw every button with the same svg icon size and swap reload for stop', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const reload = container.querySelector('[data-browser-action="reload"]');
+    const path = () => reload.querySelector('svg path').getAttribute('d');
+    const before = path();
+
+    for (const button of container.querySelectorAll('[data-browser-action]')) {
+      expect(button.querySelector('svg').getAttribute('width')).toBe('16');
+    }
+    app.handles[0].emit({ ...idle, url: 'https://example.com/', loading: true });
+    expect(path()).not.toBe(before);
+    expect(reload.querySelectorAll('svg')).toHaveLength(1);
   });
 });

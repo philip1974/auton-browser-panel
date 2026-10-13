@@ -24,6 +24,14 @@ Browse the web inside Auton Knowledge. The Agent can read the page you are looki
 Both tools wrap page text in `<<<BEGIN UNTRUSTED WEB CONTENT>>>` … `<<<END UNTRUSTED WEB CONTENT>>>` and tell the model never to follow instructions found inside it. Every call goes through Auton Knowledge's normal tool confirmation.
 
 如果面板没打开，工具会回答「浏览器面板未打开」；没有选中文字时回答「没有选中文字」，不会退回整页。
+If the page failed to load, the tools say so (with the network error) instead of reading the browser's error page; while a page is still loading, the result says that too.
+
+## Using the panel
+
+- Type an address (`en.wikipedia.org` is enough) and press Enter; Escape puts back the current address.
+- While a page loads, a bar runs under the toolbar and the reload button becomes stop.
+- With the page focused, Cmd/Ctrl+R reloads the page and Cmd/Ctrl+[ / ] go back and forward.
+- The panel follows the app language (English, 中文, 日本語, 한국어).
 
 ## Permissions and isolation
 

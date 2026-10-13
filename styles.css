@@ -8,6 +8,7 @@
 }
 
 [data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-toolbar] {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -17,8 +18,12 @@
 
 [data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-action] {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
+  padding: 0;
   border: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
   border-radius: var(--agent-radius-sm, 4px);
   background: var(--agent-color-bg-elevated, transparent);
@@ -65,4 +70,41 @@
 [data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-view] {
   flex: 1;
   min-height: 160px;
+}
+
+/* Indeterminate load bar along the toolbar's bottom edge: it takes no layout space, so the web view never moves. */
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-progress] {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-progress][hidden] {
+  display: none;
+}
+
+[data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-progress]::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  background: var(--agent-color-brand, #3b82f6);
+  animation: browser-panel-progress 1.2s ease-in-out infinite;
+}
+
+@keyframes browser-panel-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-progress]::after {
+    width: 100%;
+    animation: none;
+    opacity: 0.6;
+  }
 }

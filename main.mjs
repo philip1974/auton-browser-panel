@@ -41,6 +41,8 @@ const MESSAGES = {
   VIEW_CRASHED: '浏览器面板里的页面崩溃了。请让用户刷新页面后再试。',
   READ_TIMEOUT: '读取网页超时（页面可能过大或卡住）。可以稍后再试。',
   READ_BUSY: '上一次读取仍在进行中，请稍后再试。',
+  READ_TIMEOUT_LOADING: '页面仍在加载，读取等待超时。请等页面加载完成后再试。',
+  loadFailed: (url, code) => `浏览器面板里的网页加载失败（${neutralize(code)}）：${neutralize(url)}。请让用户检查网址或网络后重新打开。`,
 };
 
 function readCode(error) {
@@ -48,8 +50,10 @@ function readCode(error) {
   return typeof code === 'string' ? code : 'UNKNOWN';
 }
 
-function failure(error) {
+function failure(error, view) {
   const code = readCode(error);
+  // The host waits for a pending load before reading, so a slow page times out the read.
+  if (code === 'READ_TIMEOUT' && view.state?.loading === true) return MESSAGES.READ_TIMEOUT_LOADING;
   return MESSAGES[code] ?? `读取网页失败（${code}）。`;
 }
 
@@ -82,6 +86,135 @@ function element(tag, attributes = {}, text) {
   return node;
 }
 
+// 16px stroke icons (currentColor), so every toolbar button has the same visual weight.
+const ICONS = {
+  back: 'M19 12H5M12 19l-7-7 7-7',
+  forward: 'M5 12h14M12 5l7 7-7 7',
+  reload: 'M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6',
+  stop: 'M18 6 6 18M6 6l12 12',
+};
+
+function icon(name) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  for (const [key, value] of Object.entries({
+    viewBox: '0 0 24 24', width: '16', height: '16', fill: 'none', stroke: 'currentColor',
+    'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true',
+  })) svg.setAttribute(key, value);
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', ICONS[name]);
+  svg.append(path);
+  return svg;
+}
+
+// Panel text in the app language (Auton Knowledge sets <html lang>; Settings closes plugin panels,
+// so a language change always reaches a fresh render). Agent-facing text stays as it is.
+const UI = {
+  en: {
+    back: 'Back', forward: 'Forward', reload: 'Reload', stop: 'Stop', address: 'Web address',
+    addressPlaceholder: 'Enter a web address, e.g. en.wikipedia.org',
+    placeholder: 'Type an address above and press Enter. The Agent can then read this page and your selection.',
+    unsupported: 'This plugin needs a newer Auton Knowledge with the web.browse capability.',
+    schemeRefused: 'Only http and https addresses can be opened.',
+    notAnAddress: (text) => `“${text}” is not a web address. Type one like en.wikipedia.org.`,
+    actionFailed: (code) => `The browser could not do that (${code}).`,
+    crashed: 'The page crashed. Press reload to try again.',
+    loadFailed: (reason, code) => `${reason} (${code})`,
+    genericLoadFailed: 'The page could not be loaded',
+    reasons: {
+      notFound: 'Could not find this site. Check the address.',
+      offline: 'You appear to be offline.',
+      refused: 'The site refused the connection.',
+      timedOut: 'The site took too long to respond.',
+      interrupted: 'The connection was interrupted.',
+      certificate: 'The site’s security certificate is not trusted.',
+    },
+  },
+  zh: {
+    back: '后退', forward: '前进', reload: '刷新', stop: '停止', address: '网址',
+    addressPlaceholder: '输入网址，例如 zh.wikipedia.org',
+    placeholder: '在上方输入网址并按回车。之后 Agent 就能读取这个页面和你选中的文字。',
+    unsupported: '这个插件需要支持 web.browse 能力的新版 Auton Knowledge。',
+    schemeRefused: '只能打开 http 和 https 网址。',
+    notAnAddress: (text) => `“${text}”不是网址。请输入类似 zh.wikipedia.org 的地址。`,
+    actionFailed: (code) => `浏览器无法完成这个操作（${code}）。`,
+    crashed: '页面崩溃了。点刷新重试。',
+    loadFailed: (reason, code) => `${reason}（${code}）`,
+    genericLoadFailed: '页面无法加载',
+    reasons: {
+      notFound: '找不到这个网站，请检查网址。',
+      offline: '你似乎没有联网。',
+      refused: '网站拒绝了连接。',
+      timedOut: '网站响应超时。',
+      interrupted: '连接被中断了。',
+      certificate: '网站的安全证书不受信任。',
+    },
+  },
+  ja: {
+    back: '戻る', forward: '進む', reload: '再読み込み', stop: '中止', address: 'ウェブアドレス',
+    addressPlaceholder: 'ウェブアドレスを入力（例: ja.wikipedia.org）',
+    placeholder: '上にアドレスを入力して Enter を押してください。Agent がこのページと選択したテキストを読めるようになります。',
+    unsupported: 'このプラグインには web.browse に対応した新しい Auton Knowledge が必要です。',
+    schemeRefused: '開けるのは http と https のアドレスだけです。',
+    notAnAddress: (text) => `「${text}」はウェブアドレスではありません。ja.wikipedia.org のように入力してください。`,
+    actionFailed: (code) => `ブラウザでその操作を実行できませんでした（${code}）。`,
+    crashed: 'ページがクラッシュしました。再読み込みしてください。',
+    loadFailed: (reason, code) => `${reason}（${code}）`,
+    genericLoadFailed: 'ページを読み込めませんでした',
+    reasons: {
+      notFound: 'サイトが見つかりません。アドレスを確認してください。',
+      offline: 'オフラインのようです。',
+      refused: 'サイトに接続を拒否されました。',
+      timedOut: 'サイトの応答に時間がかかりすぎています。',
+      interrupted: '接続が中断されました。',
+      certificate: 'サイトのセキュリティ証明書が信頼されていません。',
+    },
+  },
+  ko: {
+    back: '뒤로', forward: '앞으로', reload: '새로고침', stop: '중지', address: '웹 주소',
+    addressPlaceholder: '웹 주소 입력 (예: ko.wikipedia.org)',
+    placeholder: '위에 주소를 입력하고 Enter를 누르세요. 그러면 Agent가 이 페이지와 선택한 텍스트를 읽을 수 있습니다.',
+    unsupported: '이 플러그인에는 web.browse 기능을 지원하는 최신 Auton Knowledge가 필요합니다.',
+    schemeRefused: 'http와 https 주소만 열 수 있습니다.',
+    notAnAddress: (text) => `“${text}”은(는) 웹 주소가 아닙니다. ko.wikipedia.org처럼 입력하세요.`,
+    actionFailed: (code) => `브라우저가 그 작업을 하지 못했습니다(${code}).`,
+    crashed: '페이지가 중단되었습니다. 새로고침하세요.',
+    loadFailed: (reason, code) => `${reason} (${code})`,
+    genericLoadFailed: '페이지를 불러올 수 없습니다',
+    reasons: {
+      notFound: '사이트를 찾을 수 없습니다. 주소를 확인하세요.',
+      offline: '오프라인 상태인 것 같습니다.',
+      refused: '사이트가 연결을 거부했습니다.',
+      timedOut: '사이트 응답 시간이 너무 깁니다.',
+      interrupted: '연결이 중단되었습니다.',
+      certificate: '사이트의 보안 인증서를 신뢰할 수 없습니다.',
+    },
+  },
+};
+
+function uiText() {
+  const lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+  return UI[lang] ?? UI.en;
+}
+
+const NETWORK_REASONS = [
+  [/^ERR_NAME_NOT_RESOLVED$|^ERR_NAME_RESOLUTION_FAILED$|^ERR_ADDRESS_UNREACHABLE$/u, 'notFound'],
+  [/^ERR_INTERNET_DISCONNECTED$|^ERR_NETWORK_CHANGED$/u, 'offline'],
+  [/^ERR_CONNECTION_REFUSED$/u, 'refused'],
+  [/^ERR_(CONNECTION_)?TIMED_OUT$/u, 'timedOut'],
+  [/^ERR_CONNECTION_(RESET|CLOSED|ABORTED)$|^ERR_EMPTY_RESPONSE$/u, 'interrupted'],
+  [/^ERR_CERT_|^ERR_SSL_/u, 'certificate'],
+];
+
+function loadFailure(text, code) {
+  const known = NETWORK_REASONS.find(([pattern]) => pattern.test(code));
+  return text.loadFailed(known === undefined ? text.genericLoadFailed : text.reasons[known[1]], code);
+}
+
+/** `mailto:x` names another scheme; `localhost:3000` and `hello world` do not. */
+function namesAnotherScheme(address) {
+  return /^[a-z][a-z0-9+.-]*:(?!\d)/iu.test(address.trim());
+}
+
 export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin {
   async onload() {
     this.activeView = null;
@@ -106,70 +239,95 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
   }
 
   renderPanel(container) {
+    const text = uiText();
     if (this.app.webViews === undefined) {
-      container.append(element('p', { 'data-browser-unsupported': '' },
-        'This plugin needs a newer Auton Knowledge with the web.browse capability. 需要更新 Auton Knowledge。'));
+      container.append(element('p', { 'data-browser-unsupported': '' }, text.unsupported));
       return () => container.replaceChildren();
     }
 
-    const back = element('button', { type: 'button', 'data-browser-action': 'back', title: 'Back', 'aria-label': 'Back' }, '←');
-    const forward = element('button', { type: 'button', 'data-browser-action': 'forward', title: 'Forward', 'aria-label': 'Forward' }, '→');
-    const reload = element('button', { type: 'button', 'data-browser-action': 'reload', title: 'Reload', 'aria-label': 'Reload' }, '⟳');
+    const button = (action, label) => {
+      const node = element('button', { type: 'button', 'data-browser-action': action, title: label, 'aria-label': label });
+      node.append(icon(action));
+      return node;
+    };
+    const back = button('back', text.back);
+    const forward = button('forward', text.forward);
+    const reload = button('reload', text.reload);
     const address = element('input', {
       type: 'text',
       'data-browser-address': '',
-      placeholder: 'Enter a web address, e.g. en.wikipedia.org',
-      'aria-label': 'Web address',
+      placeholder: text.addressPlaceholder,
+      'aria-label': text.address,
       spellcheck: 'false',
       autocomplete: 'off',
     });
     back.disabled = true;
     forward.disabled = true;
+    const progress = element('div', { 'data-browser-progress': '', 'aria-hidden': 'true' });
+    progress.hidden = true;
     const error = element('p', { 'data-browser-error': '', role: 'status' });
     error.hidden = true;
     const view = element('div', { 'data-browser-view': '' });
-    const placeholder = element('p', { 'data-browser-placeholder': '' },
-      'Type an address above and press Enter. The Agent can then read this page and your selection.');
-    container.append(
-      element('div', { 'data-browser-toolbar': '' }),
-      error,
-      placeholder,
-      view,
-    );
-    container.firstChild.append(back, forward, reload, address);
+    const placeholder = element('p', { 'data-browser-placeholder': '' }, text.placeholder);
+    const toolbar = element('div', { 'data-browser-toolbar': '' });
+    toolbar.append(back, forward, reload, address, progress);
+    container.append(toolbar, error, placeholder, view);
 
     const handle = this.createWebView(view);
     this.activeView = handle;
+    let current = { url: '', loading: false };
+    // True from the first keystroke until Enter or Escape: only then is the address the user's draft.
+    let editing = false;
+    // After Enter the old page stays current until the new one commits; show what was asked for meanwhile.
+    let submittedFrom = null;
     const showError = (message) => {
       error.textContent = message;
       error.hidden = message === '';
     };
-    const run = (action) => {
+    const run = (action, attempted = '') => {
       action().catch((cause) => {
         const code = readCode(cause);
-        showError(code === 'URL_NOT_ALLOWED'
-          ? 'Only http and https addresses can be opened.'
-          : `The browser could not do that (${code}).`);
+        if (code !== 'URL_NOT_ALLOWED') showError(text.actionFailed(code));
+        else showError(namesAnotherScheme(attempted) ? text.schemeRefused : text.notAnAddress(attempted.trim()));
       });
     };
 
     back.addEventListener('click', () => run(() => handle.back()));
     forward.addEventListener('click', () => run(() => handle.forward()));
-    reload.addEventListener('click', () => run(() => handle.reload()));
+    reload.addEventListener('click', () => run(() => (current.loading ? handle.stop() : handle.reload())));
+    address.addEventListener('focus', () => { address.select(); });
+    address.addEventListener('input', () => { editing = true; });
     address.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        editing = false;
+        submittedFrom = null;
+        address.value = current.url;
+        address.select();
+        return;
+      }
       if (event.key !== 'Enter') return;
+      editing = false;
+      submittedFrom = current.url;
       const target = address.value;
       showError('');
-      run(() => handle.navigate(target));
+      run(() => handle.navigate(target), target);
     });
 
     const subscription = handle.onState((state) => {
-      if (document.activeElement !== address) address.value = state.url;
+      const waiting = submittedFrom !== null && state.url === submittedFrom && (state.loading || !current.loading);
+      if (!waiting) submittedFrom = null;
+      current = state;
+      if (!editing && submittedFrom === null) address.value = state.url;
       back.disabled = !state.canGoBack;
       forward.disabled = !state.canGoForward;
+      const label = state.loading ? text.stop : text.reload;
+      reload.replaceChildren(icon(state.loading ? 'stop' : 'reload'));
+      reload.title = label;
+      reload.setAttribute('aria-label', label);
+      progress.hidden = !state.loading;
       placeholder.hidden = state.url !== '';
-      if (state.crashed) showError('The page crashed. Press reload to try again.');
-      else showError(state.error === undefined ? '' : `The page could not be loaded (${state.error}).`);
+      if (state.crashed) showError(text.crashed);
+      else showError(state.error === undefined ? '' : loadFailure(text, state.error));
       if (state.url !== '' && state.url !== this.lastUrl) {
         this.lastUrl = state.url;
         void this.saveData({ lastUrl: state.url });
@@ -186,30 +344,49 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     };
   }
 
+  /** A failed load leaves Chromium's error page in the view; that is not the page the user meant. */
+  viewProblem(view) {
+    const state = view.state;
+    if (state === null || state === undefined) return null;
+    if (state.error !== undefined) return MESSAGES.loadFailed(state.url, state.error);
+    return null;
+  }
+
+  loadingNote(view) {
+    const state = view.state;
+    return state !== null && state !== undefined && state.loading
+      ? [`Note: the panel is still loading ${neutralize(state.url)}; this text may be from the previous page or incomplete.`]
+      : [];
+  }
+
   async readPage(input) {
     const view = this.activeView;
     if (view === null) return MESSAGES.panelClosed;
+    const problem = this.viewProblem(view);
+    if (problem !== null) return problem;
     try {
       const page = await view.readPage({ maxChars: pageBudget(input) });
       const note = page.truncated
         ? [`Truncated: showing the first ${page.text.length} characters of ${page.budgetExceeded ? 'at least ' : ''}${page.originalLength}.`]
         : [];
-      return formatBlock(page, note);
+      return formatBlock(page, [...this.loadingNote(view), ...note]);
     } catch (cause) {
-      return failure(cause);
+      return failure(cause, view);
     }
   }
 
   async readSelection() {
     const view = this.activeView;
     if (view === null) return MESSAGES.panelClosed;
+    const problem = this.viewProblem(view);
+    if (problem !== null) return problem;
     try {
       const selection = await view.readSelection();
       if (selection.text.trim() === '') return MESSAGES.noSelection;
       const note = selection.truncated ? [`Truncated: showing ${selection.text.length} of ${selection.originalLength} characters.`] : [];
-      return formatBlock(selection, note);
+      return formatBlock(selection, [...this.loadingNote(view), ...note]);
     } catch (cause) {
-      return failure(cause);
+      return failure(cause, view);
     }
   }
 }
