@@ -106,6 +106,7 @@ const MESSAGES = {
   interactionUnsupported: '当前 Auton Knowledge 版本或插件权限不支持网页交互。',
   authorizationRequired: '浏览器操作失败（AUTHORIZATION_REQUIRED）：该动作必须由当前工具调用的用户确认授权，不能在后台执行或复用旧授权。',
   actionTimeout: '浏览器操作超时（ACTION_TIMEOUT），结果未知。请停止且不要重试，让用户先检查页面。',
+  optionNameOnlyForSelect: 'optionName 只用于 select；点击和填写不要带它。请去掉 optionName 后重新调用，不需要重新观察。',
   selectNeedsOptionName: '选择下拉选项时必须同时给出 optionName（观察结果里该选项的 name）：用户批准时看到的是这个可见文字。请带上 optionName 重新调用，不需要重新观察。',
   scrollLimit: '页面在这个方向上已经滚到头了，或没有可以滚动的区域（SCROLL_LIMIT）。请重新观察页面，不要沿同一方向继续滚动。',
   actionBusy: '浏览器正忙于上一次页面操作（ACTION_BUSY）。请等待完成后重新观察页面，不要复用旧引用。',
@@ -573,6 +574,9 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     const action = request !== null && typeof request === 'object' ? request.action : undefined;
     if (action !== null && typeof action === 'object' && action.kind === 'select' && typeof action.optionName !== 'string') {
       return MESSAGES.selectNeedsOptionName;
+    }
+    if (action !== null && typeof action === 'object' && action.kind !== 'select' && action.optionName !== undefined) {
+      return MESSAGES.optionNameOnlyForSelect;
     }
     const problem = this.viewProblem(view);
     if (problem !== null) return problem;
