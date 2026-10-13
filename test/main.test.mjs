@@ -977,7 +977,7 @@ describe('interaction note', () => {
     expect(description).not.toMatch(/instead of observing again/u);
     expect(description).toMatch(/may still be working/u);
     expect(description).toMatch(/scrolls are observed at once/u);
-    expect(description).toMatch(/never repeat a click that may have submitted/u);
+    expect(description).toMatch(/never repeat a click or fill that may have submitted/u);
   });
 });
 
