@@ -889,3 +889,31 @@ describe('blocked download', () => {
     await expect(app.tools.get('browser_get_page').run({})).resolves.toContain('UNTRUSTED');
   });
 });
+
+describe('page without readable text', () => {
+  it('should say the page has no readable text instead of returning an empty block', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].page = { ...app.handles[0].page, url: 'https://example.com/doc.pdf', title: 'doc.pdf', text: '  \n ', originalLength: 0 };
+
+    const result = await app.tools.get('browser_get_page').run({});
+
+    expect(result).toMatch(/没有可读的文字/u);
+    expect(result).toMatch(/PDF/u);
+    expect(result).toContain('https://example.com/doc.pdf');
+    expect(result).not.toContain('UNTRUSTED WEB CONTENT>>>\n');
+  });
+});
+
+describe('loading for assistive technology', () => {
+  it('should mark the view busy while a page loads', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const view = container.querySelector('[data-browser-view]');
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/', loading: true });
+    expect(view.getAttribute('aria-busy')).toBe('true');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/' });
+    expect(view.getAttribute('aria-busy')).toBe('false');
+  });
+});

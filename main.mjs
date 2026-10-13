@@ -42,6 +42,7 @@ const MESSAGES = {
   READ_TIMEOUT: '读取网页超时（页面可能过大或卡住）。可以稍后再试。',
   READ_BUSY: '上一次读取仍在进行中，请稍后再试。',
   READ_TIMEOUT_LOADING: '页面仍在加载，读取等待超时。请等页面加载完成后再试。',
+  noText: (url) => `浏览器面板里的页面没有可读的文字：${neutralize(url)}。它可能是 PDF、图片，或由脚本绘制的内容；可以请用户选中文字或复制需要的部分。`,
   loadFailed: (url, code) => `浏览器面板里的网页加载失败（${neutralize(code)}）：${neutralize(url)}。请让用户检查网址或网络后重新打开。`,
 };
 
@@ -358,6 +359,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       reload.title = label;
       reload.setAttribute('aria-label', label);
       progress.hidden = !state.loading;
+      view.setAttribute('aria-busy', String(state.loading));
       placeholder.hidden = state.url !== '' || submittedFrom !== null;
       if (state.crashed) showError(text.crashed);
       else if (state.error !== undefined) showError(loadFailure(text, state.error));
@@ -407,6 +409,8 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     if (problem !== null) return problem;
     try {
       const page = await view.readPage({ maxChars: pageBudget(input) });
+      // An empty block reads like a broken tool; say what kind of page this probably is.
+      if (page.text.trim() === '') return MESSAGES.noText(page.url);
       const note = page.truncated
         ? [`Truncated: showing the first ${page.text.length} characters of ${lowerBound(page) ? 'at least ' : ''}${page.originalLength}.`]
         : [];
