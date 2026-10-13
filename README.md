@@ -45,6 +45,7 @@ Uninstalling the plugin also clears its browsing data (cookies, storage, cache).
 ## Limits
 
 - One browser panel, one page at a time; no tabs, bookmarks or history list.
+- Closing the panel closes the page. Reopening it loads the last address again, without its back/forward history or scroll position.
 - Only the top-level document is read; text inside iframes and PDF viewers is not.
 - The page is hidden while a dialog, menu or Settings covers the panel area.
 

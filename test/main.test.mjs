@@ -721,3 +721,61 @@ describe('toolbar icons', () => {
     expect(reload.querySelectorAll('svg')).toHaveLength(1);
   });
 });
+
+describe('empty address', () => {
+  it('should do nothing when Enter is pressed on an empty or blank address', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+
+    typeAndPress(input, '   ', 'Enter');
+    await tick();
+
+    expect(app.handles[0].calls).toEqual([]);
+    expect(container.querySelector('[data-browser-error]').hidden).toBe(true);
+  });
+});
+
+describe('reopening the last page', () => {
+  it('should show the remembered address at once and not flash the empty-panel hint', async () => {
+    const { app } = await load({ stored: { lastUrl: 'https://example.com/saved' } });
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+
+    expect(input.value).toBe('https://example.com/saved');
+    expect(container.querySelector('[data-browser-placeholder]').hidden).toBe(true);
+    app.handles[0].emit({ ...idle, url: '', loading: true });
+    expect(input.value).toBe('https://example.com/saved');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/saved', loading: true });
+    expect(input.value).toBe('https://example.com/saved');
+  });
+
+  it('should not leave a failed save as an unhandled rejection', async () => {
+    const { app, plugin } = await load();
+    plugin.saveData = () => Promise.reject(new Error('DATA_WRITE_FAILED'));
+    const rejections = [];
+    const onRejection = (reason) => rejections.push(reason);
+    process.on('unhandledRejection', onRejection);
+    renderPanel(app);
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/x' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    process.off('unhandledRejection', onRejection);
+
+    expect(rejections).toEqual([]);
+  });
+});
+
+describe('loading note wording', () => {
+  it('should say the text may be incomplete, not that it is from another page', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/next', loading: true });
+
+    const page = await app.tools.get('browser_get_page').run({});
+
+    expect(page).toMatch(/still loading/u);
+    expect(page).toMatch(/incomplete/u);
+    expect(page).not.toMatch(/previous page/u);
+  });
+});

@@ -305,7 +305,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
         address.select();
         return;
       }
-      if (event.key !== 'Enter') return;
+      if (event.key !== 'Enter' || address.value.trim() === '') return;
       editing = false;
       submittedFrom = current.url;
       const target = address.value;
@@ -325,16 +325,23 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       reload.title = label;
       reload.setAttribute('aria-label', label);
       progress.hidden = !state.loading;
-      placeholder.hidden = state.url !== '';
+      placeholder.hidden = state.url !== '' || submittedFrom !== null;
       if (state.crashed) showError(text.crashed);
       else showError(state.error === undefined ? '' : loadFailure(text, state.error));
       if (state.url !== '' && state.url !== this.lastUrl) {
         this.lastUrl = state.url;
-        void this.saveData({ lastUrl: state.url });
+        // Remembering the page is a convenience; a failed save must not surface as an unhandled rejection.
+        this.saveData({ lastUrl: state.url }).catch(() => undefined);
       }
     });
 
-    if (this.lastUrl !== '') run(() => handle.navigate(this.lastUrl));
+    if (this.lastUrl !== '') {
+      const restored = this.lastUrl;
+      address.value = restored;
+      placeholder.hidden = true;
+      submittedFrom = current.url;
+      run(() => handle.navigate(restored), restored);
+    }
 
     return () => {
       subscription.dispose();
@@ -355,7 +362,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
   loadingNote(view) {
     const state = view.state;
     return state !== null && state !== undefined && state.loading
-      ? [`Note: the panel is still loading ${neutralize(state.url)}; this text may be from the previous page or incomplete.`]
+      ? [`Note: the panel was still loading ${neutralize(state.url)} when this was read; the text may be incomplete.`]
       : [];
   }
 
