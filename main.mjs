@@ -38,7 +38,7 @@ const INTERACTION_NOTE = `Element names, page state, and the Title and URL lines
 
 const OBSERVE_TOOL = {
   name: 'browser_get_interactive',
-  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; text fields include their current value (cut to 256 characters), select controls include a bounded option snapshot, disabled controls are listed with disabled: true and cannot be used yet, controls covered by a dialog or overlay are left out, and password, verification, payment, and file fields are marked restricted and cannot be filled. ${INTERACTION_NOTE}`,
+  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; text fields (including rich-text and chat editors) include their current value (cut to 256 characters), toggles such as switches report checked, disclosure and menu buttons report expanded, tabs and options report selected, select controls include a bounded option snapshot, disabled controls are listed with disabled: true and cannot be used yet, controls covered by a dialog or overlay are left out, and password, verification, payment, and file fields are marked restricted and cannot be filled. ${INTERACTION_NOTE}`,
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
 };
 

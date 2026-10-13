@@ -316,6 +316,8 @@ describe('semantic browser interaction tools', () => {
 
     expect(app.tools.get('browser_get_interactive').description).toMatch(/disabled: true/u);
     expect(app.tools.get('browser_get_interactive').description).toMatch(/current value/u);
+    expect(app.tools.get('browser_get_interactive').description).toMatch(/expanded/u);
+    expect(app.tools.get('browser_get_interactive').description).toMatch(/rich-text and chat editors/u);
     expect(app.tools.get('browser_scroll').description).toMatch(/SCROLL_LIMIT/u);
   });
 });
