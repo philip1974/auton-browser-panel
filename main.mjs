@@ -73,6 +73,11 @@ function formatBlock(snapshot, extraLines = []) {
   ].join('\n');
 }
 
+/** Newer hosts say when the reader stopped early; older ones only flag the node/time budget. */
+function lowerBound(page) {
+  return typeof page.lengthIsLowerBound === 'boolean' ? page.lengthIsLowerBound : page.budgetExceeded === true;
+}
+
 function pageBudget(input) {
   const requested = input !== null && typeof input === 'object' ? input.max_chars : undefined;
   if (!Number.isInteger(requested)) return DEFAULT_PAGE_CHARS;
@@ -374,7 +379,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     try {
       const page = await view.readPage({ maxChars: pageBudget(input) });
       const note = page.truncated
-        ? [`Truncated: showing the first ${page.text.length} characters of ${page.budgetExceeded ? 'at least ' : ''}${page.originalLength}.`]
+        ? [`Truncated: showing the first ${page.text.length} characters of ${lowerBound(page) ? 'at least ' : ''}${page.originalLength}.`]
         : [];
       return formatBlock(page, [...this.loadingNote(view), ...note]);
     } catch (cause) {

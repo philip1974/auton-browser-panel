@@ -779,3 +779,15 @@ describe('loading note wording', () => {
     expect(page).not.toMatch(/previous page/u);
   });
 });
+
+describe('truncated length', () => {
+  it('should call the total a lower bound when the host says the read stopped early', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].page = { ...app.handles[0].page, text: 'x'.repeat(10), truncated: true, originalLength: 5866, budgetExceeded: false, lengthIsLowerBound: true };
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/of at least 5866/u);
+
+    app.handles[0].page = { ...app.handles[0].page, lengthIsLowerBound: false };
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/characters of 5866\./u);
+  });
+});
