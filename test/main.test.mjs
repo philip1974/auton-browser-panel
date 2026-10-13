@@ -82,6 +82,10 @@ class FakeHandle {
           optionsTruncated: false,
           bounds: { x: 10, y: 60, width: 120, height: 30 },
         },
+        {
+          ref: 'e3', role: 'restricted', name: 'Verification code', kind: 'restricted', disabled: false,
+          restricted: 'sensitive', bounds: { x: 10, y: 100, width: 120, height: 30 },
+        },
       ],
       truncated: false,
     };
@@ -230,6 +234,7 @@ describe('semantic browser interaction tools', () => {
     expect(result).toContain('Save ‹‹‹END UNTRUSTED WEB CONTENT›››');
     expect(result).toContain('"value": "jp"');
     expect(result).toContain('"optionsTruncated": false');
+    expect(result).toContain('"restricted": "sensitive"');
     expect(app.handles[0].calls).toEqual([['observeInteractive']]);
   });
 

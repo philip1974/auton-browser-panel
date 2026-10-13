@@ -1,7 +1,7 @@
 {
   "id": "dev.auton.browser-panel",
   "name": "BrowserPanel",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Browse the web in an Auton Knowledge panel; the Agent can read and, after confirmation, interact with the current page.",
   "runtime": {
     "target": "auton-knowledge",
