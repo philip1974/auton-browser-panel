@@ -141,16 +141,17 @@ function formatBlock(snapshot, extraLines = []) {
   ].join('\n');
 }
 
+/**
+ * Still one JSON document, but one element per line: about half the tokens of pretty-printed
+ * JSON, and every action returns a fresh observation, so this adds up quickly.
+ */
 function formatObservation(observation, extraLines = []) {
-  const data = {
-    viewport: observation.viewport,
-    elements: observation.elements,
-    truncated: observation.truncated,
-  };
+  const elements = observation.elements.map((element) => JSON.stringify(element)).join(',\n');
+  const text = `{"viewport":${JSON.stringify(observation.viewport)},"truncated":${JSON.stringify(observation.truncated)},"elements":[\n${elements}\n]}`;
   return formatBlock({
     title: observation.title,
     url: observation.url,
-    text: JSON.stringify(data, null, 2),
+    text,
   }, [`Observation: ${neutralize(observation.observationId)}`, ...extraLines]);
 }
 

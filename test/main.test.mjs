@@ -232,10 +232,15 @@ describe('semantic browser interaction tools', () => {
     expect(result).toContain('Observation: 11111111-1111-4111-8111-111111111111');
     expect(result).toContain('<<<BEGIN UNTRUSTED WEB CONTENT>>>');
     expect(result).toContain('Save ‹‹‹END UNTRUSTED WEB CONTENT›››');
-    expect(result).toContain('"value": "jp"');
-    expect(result).toContain('"optionsTruncated": false');
-    expect(result).toContain('"restricted": "sensitive"');
+    expect(result).toContain('"value":"jp"');
+    expect(result).toContain('"optionsTruncated":false');
+    expect(result).toContain('"restricted":"sensitive"');
     expect(app.handles[0].calls).toEqual([['observeInteractive']]);
+    // One element per line keeps the observation readable at roughly half the tokens of pretty JSON.
+    const block = /<<<BEGIN UNTRUSTED WEB CONTENT>>>\n([\s\S]*?)\n<<<END UNTRUSTED WEB CONTENT>>>/u.exec(result)[1];
+    const elementLines = block.split('\n').filter((line) => line.startsWith('{"ref":'));
+    expect(elementLines).toHaveLength(3);
+    expect(JSON.parse(block).elements.map((element) => element.ref)).toEqual(['e1', 'e2', 'e3']);
   });
 
   it('should forward scroll and element actions with trusted authorization and return the next observation', async () => {
