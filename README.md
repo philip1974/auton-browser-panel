@@ -31,6 +31,7 @@ If the page failed to load, the tools say so (with the network error) instead of
 - Type an address (`en.wikipedia.org` is enough) and press Enter; Escape puts back the current address.
 - While a page loads, a bar runs under the toolbar and the reload button becomes stop.
 - With the page focused, Cmd/Ctrl+R reloads the page and Cmd/Ctrl+[ / ] go back and forward.
+- **Open in browser** (the arrow-out button) hands the current page to your system browser — use it for downloads, which the panel refuses and tells you so.
 - The panel follows the app language (English, 中文, 日本語, 한국어).
 
 ## Permissions and isolation

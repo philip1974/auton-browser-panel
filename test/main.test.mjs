@@ -82,6 +82,10 @@ class FakeHandle {
   async forward() { this.calls.push(['forward']); }
   async reload() { this.calls.push(['reload']); }
   async stop() { this.calls.push(['stop']); }
+  async openExternal() {
+    this.calls.push(['openExternal']);
+    if (this.openError) throw this.openError;
+  }
 
   async readPage(options) {
     this.calls.push(['readPage', options]);
@@ -655,7 +659,12 @@ describe('every language', () => {
         'ERR_CONNECTION_RESET', 'ERR_CERT_AUTHORITY_INVALID', 'ERR_BLOCKED_BY_RESPONSE']) {
         handle.emit({ ...idle, url: 'https://x/', error: code }); see();
       }
-      expect(seen.size).toBe(11);
+      handle.emit({ ...idle, url: 'https://x/', blocked: 'download' }); see();
+      handle.openError = codedError('OPEN_FAILED');
+      container.querySelector('[data-browser-action="external"]').click(); await tick(); see();
+      handle.openError = codedError('VIEW_NOT_FOUND');
+      container.querySelector('[data-browser-action="external"]').click(); await tick(); see();
+      expect(seen.size).toBe(13);
       document.body.innerHTML = '';
       const bare = await load({ webViews: false });
       expect(renderPanel(bare.app).container.textContent).toMatch(/web\.browse/u);
@@ -826,5 +835,57 @@ describe('panel and command titles', () => {
     expect(app.panels[0].title).toBe('브라우저');
     app.commands[0].callback();
     expect(app.opened).toEqual(['browser']);
+  });
+});
+
+describe('open in browser', () => {
+  it('should open the current page in the system browser and be off until a page is shown', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const button = container.querySelector('[data-browser-action="external"]');
+
+    expect(button.disabled).toBe(true);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+    expect(button.disabled).toBe(false);
+    button.click();
+    await tick();
+
+    expect(app.handles[0].calls).toEqual([['openExternal']]);
+  });
+
+  it('should explain when the system browser could not be opened', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+    app.handles[0].openError = codedError('OPEN_FAILED');
+
+    container.querySelector('[data-browser-action="external"]').click();
+    await tick();
+
+    expect(container.querySelector('[data-browser-error]').textContent).toMatch(/browser could not be opened/iu);
+  });
+
+  it('should leave the button out on an Auton Knowledge without it', async () => {
+    const { app } = await load();
+    const container = document.createElement('div');
+    app.webViews.create = (node) => { const handle = new FakeHandle(node); handle.openExternal = undefined; app.handles.push(handle); return handle; };
+    app.panels[0].render(container);
+
+    expect(container.querySelector('[data-browser-action="external"]')).toBeNull();
+  });
+});
+
+describe('blocked download', () => {
+  it('should say downloads are not available here and point at the browser button', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/files', blocked: 'download' });
+
+    const error = container.querySelector('[data-browser-error]');
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toMatch(/download/iu);
+    expect(error.textContent).toMatch(/Open in browser/u);
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toContain('UNTRUSTED');
   });
 });

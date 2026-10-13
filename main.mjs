@@ -97,6 +97,7 @@ const ICONS = {
   forward: 'M5 12h14M12 5l7 7-7 7',
   reload: 'M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6',
   stop: 'M18 6 6 18M6 6l12 12',
+  external: 'M14 3h7v7M10 14 21 3M21 14v7H3V3h7',
 };
 
 function icon(name) {
@@ -115,6 +116,7 @@ function icon(name) {
 // so a language change always reaches a fresh render). Agent-facing text stays as it is.
 const UI = {
   en: {
+    external: 'Open in browser', openFailed: 'The system browser could not be opened.', downloadBlocked: 'This panel cannot download files. Use “Open in browser” to download it there.',
     title: 'Browser', commandTitle: 'Browser: open panel', commandDescription: 'Open the Browser panel in the right dock.',
     back: 'Back', forward: 'Forward', reload: 'Reload', stop: 'Stop', address: 'Web address',
     addressPlaceholder: 'Enter a web address, e.g. en.wikipedia.org',
@@ -136,6 +138,7 @@ const UI = {
     },
   },
   zh: {
+    external: '在浏览器中打开', openFailed: '无法打开系统浏览器。', downloadBlocked: '这个面板不能下载文件。请用「在浏览器中打开」到浏览器里下载。',
     title: '浏览器', commandTitle: '浏览器：打开面板', commandDescription: '在右侧栏打开浏览器面板。',
     back: '后退', forward: '前进', reload: '刷新', stop: '停止', address: '网址',
     addressPlaceholder: '输入网址，例如 zh.wikipedia.org',
@@ -157,6 +160,7 @@ const UI = {
     },
   },
   ja: {
+    external: 'ブラウザで開く', openFailed: 'システムのブラウザを開けませんでした。', downloadBlocked: 'このパネルではファイルをダウンロードできません。「ブラウザで開く」からブラウザでダウンロードしてください。',
     title: 'ブラウザ', commandTitle: 'ブラウザ: パネルを開く', commandDescription: '右側にブラウザパネルを開きます。',
     back: '戻る', forward: '進む', reload: '再読み込み', stop: '中止', address: 'ウェブアドレス',
     addressPlaceholder: 'ウェブアドレスを入力（例: ja.wikipedia.org）',
@@ -178,6 +182,7 @@ const UI = {
     },
   },
   ko: {
+    external: '브라우저에서 열기', openFailed: '시스템 브라우저를 열 수 없습니다.', downloadBlocked: '이 패널에서는 파일을 다운로드할 수 없습니다. ‘브라우저에서 열기’로 브라우저에서 다운로드하세요.',
     title: '브라우저', commandTitle: '브라우저: 패널 열기', commandDescription: '오른쪽에 브라우저 패널을 엽니다.',
     back: '뒤로', forward: '앞으로', reload: '새로고침', stop: '중지', address: '웹 주소',
     addressPlaceholder: '웹 주소 입력 (예: ko.wikipedia.org)',
@@ -271,6 +276,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     const back = button('back', text.back);
     const forward = button('forward', text.forward);
     const reload = button('reload', text.reload);
+    const external = button('external', text.external);
     const address = element('input', {
       type: 'text',
       'data-browser-address': '',
@@ -281,6 +287,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     });
     back.disabled = true;
     forward.disabled = true;
+    external.disabled = true;
     const progress = element('div', { 'data-browser-progress': '', 'aria-hidden': 'true' });
     progress.hidden = true;
     const error = element('p', { 'data-browser-error': '', role: 'status' });
@@ -288,11 +295,13 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     const view = element('div', { 'data-browser-view': '' });
     const placeholder = element('p', { 'data-browser-placeholder': '' }, text.placeholder);
     const toolbar = element('div', { 'data-browser-toolbar': '' });
-    toolbar.append(back, forward, reload, address, progress);
+    toolbar.append(back, forward, reload, address, external, progress);
     container.append(toolbar, error, placeholder, view);
 
     const handle = this.createWebView(view);
     this.activeView = handle;
+    // Older Auton Knowledge versions have no way to hand a page to the system browser.
+    if (typeof handle.openExternal !== 'function') external.remove();
     let current = { url: '', loading: false };
     // True from the first keystroke until Enter or Escape: only then is the address the user's draft.
     let editing = false;
@@ -312,6 +321,11 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
 
     back.addEventListener('click', () => run(() => handle.back()));
     forward.addEventListener('click', () => run(() => handle.forward()));
+    external.addEventListener('click', () => {
+      handle.openExternal().catch((cause) => {
+        showError(readCode(cause) === 'OPEN_FAILED' ? text.openFailed : text.actionFailed(readCode(cause)));
+      });
+    });
     reload.addEventListener('click', () => run(() => (current.loading ? handle.stop() : handle.reload())));
     address.addEventListener('focus', () => { address.select(); });
     address.addEventListener('input', () => { editing = true; });
@@ -338,6 +352,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       if (!editing && submittedFrom === null) address.value = state.url;
       back.disabled = !state.canGoBack;
       forward.disabled = !state.canGoForward;
+      external.disabled = !/^https?:/u.test(state.url);
       const label = state.loading ? text.stop : text.reload;
       reload.replaceChildren(icon(state.loading ? 'stop' : 'reload'));
       reload.title = label;
@@ -345,7 +360,8 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       progress.hidden = !state.loading;
       placeholder.hidden = state.url !== '' || submittedFrom !== null;
       if (state.crashed) showError(text.crashed);
-      else showError(state.error === undefined ? '' : loadFailure(text, state.error));
+      else if (state.error !== undefined) showError(loadFailure(text, state.error));
+      else showError(state.blocked === 'download' ? text.downloadBlocked : '');
       if (state.url !== '' && state.url !== this.lastUrl) {
         this.lastUrl = state.url;
         // Remembering the page is a convenience; a failed save must not surface as an unhandled rejection.
