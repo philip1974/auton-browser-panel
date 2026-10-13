@@ -68,7 +68,7 @@ const SCROLL_TOOL = {
 
 const ACT_TOOL = {
   name: 'browser_act',
-  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Select values must be enabled options from the exact observation. Native form-submit controls, cross-origin, popup, and download links are refused; same-origin links require the exact expectedUrl from the observation. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
+  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Select values must be enabled options from the exact observation, sent with their optionName (the option's visible name), which the user sees when approving. Native form-submit controls, cross-origin, popup, and download links are refused; same-origin links require the exact expectedUrl from the observation. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -84,6 +84,7 @@ const ACT_TOOL = {
           expectedUrl: { type: 'string', format: 'uri', maxLength: 2048, description: 'For a link click, the exact navigation.url returned for this ref.' },
           text: { type: 'string', maxLength: 20000 },
           value: { type: 'string', maxLength: 2048 },
+          optionName: { type: 'string', maxLength: 256, description: 'Required for select: the exact name of that option in the observation. The user approves this text.' },
         },
         required: ['kind', 'element', 'expectedName'],
         additionalProperties: false,
@@ -105,6 +106,7 @@ const MESSAGES = {
   interactionUnsupported: '当前 Auton Knowledge 版本或插件权限不支持网页交互。',
   authorizationRequired: '浏览器操作失败（AUTHORIZATION_REQUIRED）：该动作必须由当前工具调用的用户确认授权，不能在后台执行或复用旧授权。',
   actionTimeout: '浏览器操作超时（ACTION_TIMEOUT），结果未知。请停止且不要重试，让用户先检查页面。',
+  selectNeedsOptionName: '选择下拉选项时必须同时给出 optionName（观察结果里该选项的 name）：用户批准时看到的是这个可见文字。请带上 optionName 重新调用，不需要重新观察。',
   scrollLimit: '页面在这个方向上已经滚到头了，或没有可以滚动的区域（SCROLL_LIMIT）。请重新观察页面，不要沿同一方向继续滚动。',
   actionBusy: '浏览器正忙于上一次页面操作（ACTION_BUSY）。请等待完成后重新观察页面，不要复用旧引用。',
   noText: (url) => `浏览器面板里的页面没有可读的文字：${neutralize(url)}。它可能是 PDF、图片，或由脚本绘制的内容；可以请用户选中文字或复制需要的部分。`,
@@ -567,6 +569,10 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       : undefined;
     if (authorization === null || typeof authorization !== 'object' || typeof authorization.token !== 'string') {
       return MESSAGES.authorizationRequired;
+    }
+    const action = request !== null && typeof request === 'object' ? request.action : undefined;
+    if (action !== null && typeof action === 'object' && action.kind === 'select' && typeof action.optionName !== 'string') {
+      return MESSAGES.selectNeedsOptionName;
     }
     const problem = this.viewProblem(view);
     if (problem !== null) return problem;

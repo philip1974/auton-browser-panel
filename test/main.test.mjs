@@ -326,6 +326,22 @@ describe('semantic browser interaction tools', () => {
     expect(app.tools.get('browser_scroll').description).toMatch(/SCROLL_LIMIT/u);
   });
 
+  it('should ask for the visible option name with every select, before the host refuses it', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    const context = { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } };
+    const request = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'select', element: 'e2', expectedName: 'Country', value: 'jp' },
+    };
+
+    await expect(app.tools.get('browser_act').run(request, context)).resolves.toMatch(/optionName/u);
+    expect(app.handles[0].calls.some(([name]) => name === 'act')).toBe(false);
+    expect(app.tools.get('browser_act').inputSchema.properties.action.properties.optionName).toBeDefined();
+    expect(app.tools.get('browser_act').description).toMatch(/optionName/u);
+  });
+
   it('should give one consistent rule for what to do after each kind of result', async () => {
     const { app } = await load();
     const description = app.tools.get('browser_act').description;
