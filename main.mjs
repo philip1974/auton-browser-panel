@@ -68,7 +68,7 @@ const SCROLL_TOOL = {
 
 const ACT_TOOL = {
   name: 'browser_act',
-  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
+  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Same-origin links require the exact expectedUrl from the observation; cross-origin, popup, and download links are refused. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -81,6 +81,7 @@ const ACT_TOOL = {
           kind: { type: 'string', enum: ['click', 'fill', 'select'] },
           element: { type: 'string', pattern: '^e\\d{1,3}$' },
           expectedName: { type: 'string', maxLength: 256, description: 'The exact visible name returned for this ref.' },
+          expectedUrl: { type: 'string', format: 'uri', maxLength: 2048, description: 'For a link click, the exact navigation.url returned for this ref.' },
           text: { type: 'string', maxLength: 20000 },
           value: { type: 'string', maxLength: 2048 },
         },

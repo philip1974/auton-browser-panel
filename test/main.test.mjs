@@ -204,6 +204,7 @@ describe('registration', () => {
       expect(tool.inputSchema).toMatchObject({ type: 'object', additionalProperties: false });
     }
     expect(app.tools.get('browser_get_selection').description).toMatch(/selected|selection/iu);
+    expect(app.tools.get('browser_act').inputSchema.properties.action.properties.expectedUrl).toMatchObject({ type: 'string' });
   });
 });
 
