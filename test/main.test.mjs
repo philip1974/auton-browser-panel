@@ -967,6 +967,8 @@ describe('observation tool description', () => {
     expect(description).toMatch(/mixed: true/u);
     expect(description).toMatch(/readOnly: true and cannot be filled/u);
     expect(description).toMatch(/2026-10-20/u);
+    expect(description).toMatch(/range values snap/u);
+    expect(description).toMatch(/#rrggbb/u);
   });
 });
 
@@ -989,6 +991,7 @@ describe('select beyond the listed options', () => {
 
     expect(optionName).toMatch(/optionsTruncated/u);
     expect(optionName).toMatch(/exact visible name/u);
+    expect(app.tools.get('browser_act').description).not.toMatch(/from the exact observation/u);
   });
 });
 
