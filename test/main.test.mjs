@@ -966,6 +966,7 @@ describe('observation tool description', () => {
     expect(description).toMatch(/pressed/u);
     expect(description).toMatch(/mixed: true/u);
     expect(description).toMatch(/readOnly: true and cannot be filled/u);
+    expect(description).toMatch(/2026-10-20/u);
   });
 });
 
