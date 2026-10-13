@@ -38,7 +38,7 @@ const INTERACTION_NOTE = `Element names, page state, and the Title and URL lines
 
 const OBSERVE_TOOL = {
   name: 'browser_get_interactive',
-  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors. ${INTERACTION_NOTE}`,
+  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; select controls include a bounded option snapshot. ${INTERACTION_NOTE}`,
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
 };
 
@@ -68,7 +68,7 @@ const SCROLL_TOOL = {
 
 const ACT_TOOL = {
   name: 'browser_act',
-  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Same-origin links require the exact expectedUrl from the observation; cross-origin, popup, and download links are refused. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
+  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Select values must be enabled options from the exact observation. Native form-submit controls, cross-origin, popup, and download links are refused; same-origin links require the exact expectedUrl from the observation. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
   inputSchema: {
     type: 'object',
     properties: {

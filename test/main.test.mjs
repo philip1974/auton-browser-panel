@@ -73,7 +73,16 @@ class FakeHandle {
       observationId: '11111111-1111-4111-8111-111111111111',
       url: 'https://example.com/a', title: 'Example',
       viewport: { width: 800, height: 600, scrollX: 0, scrollY: 0 },
-      elements: [{ ref: 'e1', role: 'button', name: 'Save', kind: 'button', disabled: false, bounds: { x: 10, y: 20, width: 80, height: 30 } }],
+      elements: [
+        { ref: 'e1', role: 'button', name: 'Save', kind: 'button', disabled: false, bounds: { x: 10, y: 20, width: 80, height: 30 } },
+        {
+          ref: 'e2', role: 'select', name: 'Country', kind: 'select', disabled: false,
+          selectedText: 'Korea',
+          options: [{ value: 'kr', name: 'Korea', disabled: false }, { value: 'jp', name: 'Japan', disabled: false }],
+          optionsTruncated: false,
+          bounds: { x: 10, y: 60, width: 120, height: 30 },
+        },
+      ],
       truncated: false,
     };
     this.navigateError = null;
@@ -219,6 +228,8 @@ describe('semantic browser interaction tools', () => {
     expect(result).toContain('Observation: 11111111-1111-4111-8111-111111111111');
     expect(result).toContain('<<<BEGIN UNTRUSTED WEB CONTENT>>>');
     expect(result).toContain('Save ‹‹‹END UNTRUSTED WEB CONTENT›››');
+    expect(result).toContain('"value": "jp"');
+    expect(result).toContain('"optionsTruncated": false');
     expect(app.handles[0].calls).toEqual([['observeInteractive']]);
   });
 
