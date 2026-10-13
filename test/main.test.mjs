@@ -917,3 +917,125 @@ describe('loading for assistive technology', () => {
     expect(view.getAttribute('aria-busy')).toBe('false');
   });
 });
+
+describe('review findings', () => {
+  it('should stop holding a refused address once the page updates, keeping it as an editable draft', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/x' });
+    app.handles[0].navigateError = codedError('URL_NOT_ALLOWED');
+
+    typeAndPress(input, 'mailto:a@b', 'Enter');
+    await tick();
+    input.blur();
+    app.handles[0].emit({ ...idle, url: 'https://example.com/x', title: 'new title' });
+    expect(input.value).toBe('mailto:a@b');
+    expect(container.querySelector('[data-browser-error]').hidden).toBe(false);
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/y' });
+    expect(input.value).toBe('https://example.com/y');
+  });
+
+  it('should not navigate on Enter while an input method is composing', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+
+    input.focus();
+    input.value = 'にほん';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229 }));
+    await tick();
+
+    expect(app.handles[0].calls).toEqual([]);
+  });
+
+  it('should drop an empty or unchanged draft when the address bar loses focus', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+
+    input.focus();
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    input.blur();
+    expect(input.value).toBe('https://example.com/a');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/b' });
+    expect(input.value).toBe('https://example.com/b');
+  });
+
+  it('should drop a typed draft when the page navigates while the bar is not focused', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const input = container.querySelector('input[data-browser-address]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+
+    input.focus();
+    input.value = 'half typed';
+    input.dispatchEvent(new Event('input'));
+    input.blur();
+    expect(input.value).toBe('half typed');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/b' });
+
+    expect(input.value).toBe('https://example.com/b');
+  });
+
+  it('should keep an action failure visible through title updates until a new load starts', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const error = container.querySelector('[data-browser-error]');
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a' });
+    app.handles[0].openError = codedError('OPEN_FAILED');
+
+    container.querySelector('[data-browser-action="external"]').click();
+    await tick();
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a', title: 'changed' });
+    expect(error.hidden).toBe(false);
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/a', loading: true });
+    expect(error.hidden).toBe(true);
+  });
+
+  it('should tell the model the panel was closed when the view went away during a read', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].readError = codedError('VIEW_NOT_FOUND');
+
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/浏览器面板未打开/u);
+    await expect(app.tools.get('browser_get_selection').run({})).resolves.toMatch(/浏览器面板未打开/u);
+  });
+
+  it('should say the title and url lines also come from the page', async () => {
+    const { app } = await load();
+    for (const tool of app.tools.values()) expect(tool.description).toMatch(/title and URL/iu);
+  });
+
+  it('should not call a changed network offline, and keep the error code after the sentence', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const error = container.querySelector('[data-browser-error]');
+
+    app.handles[0].emit({ ...idle, url: 'https://example.com/', error: 'ERR_NETWORK_CHANGED' });
+    expect(error.textContent).not.toMatch(/offline/iu);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/', error: 'ERR_NAME_NOT_RESOLVED' });
+    expect(error.textContent).not.toMatch(/\. \(/u);
+  });
+});
+
+describe('failed toolbar action', () => {
+  it('should report a failed back without touching the address', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/b', canGoBack: true });
+    app.handles[0].back = async () => { throw codedError('VIEW_NOT_FOUND'); };
+
+    container.querySelector('[data-browser-action="back"]').click();
+    await tick();
+
+    expect(container.querySelector('[data-browser-error]').textContent).toContain('VIEW_NOT_FOUND');
+    expect(container.querySelector('input[data-browser-address]').value).toBe('https://example.com/b');
+  });
+});
