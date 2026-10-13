@@ -1,17 +1,17 @@
 # Browser Panel for Auton Knowledge
 
-Browse the web inside Auton Knowledge. The Agent can read the page you are looking at and the text you select, so you can ask about it without copying and pasting.
+Browse the web inside Auton Knowledge. The Agent can read the page you are looking at and, after your confirmation, use visible page controls.
 
-在 Auton Knowledge 里浏览网页。Agent 能读到你正在看的页面和你选中的文字，直接提问即可，不用复制粘贴。
+在 Auton Knowledge 里浏览网页。Agent 能读取当前页面和选中文字，也能在你逐次确认后滚动、点击及填写普通表单。
 
 ## Requirements
 
-- An Auton Knowledge version that supports the `web.browse` runtime-plugin permission. Older versions reject the permission and will not install this plugin.
+- An Auton Knowledge version that supports the `web.browse` and `web.interact` runtime-plugin permissions. Older versions reject the permission and will not install this plugin.
 
 ## Install
 
 1. Open **Settings → Extensions → Plugin marketplace**, find **Browser Panel** and install it. Or install from GitHub with id `dev.auton.browser-panel` and repository `philip1974/auton-browser-panel`.
-2. Click **Review permissions**, read what `web.browse` and `agent.tools` allow, then **Grant and enable**.
+2. Click **Review permissions**, read what `web.browse`, `web.interact` and `agent.tools` allow, then **Grant and enable**.
 3. Open the panel with the 🌐 icon or the `/dev.auton.browser-panel:open` command, type an address and press Enter.
 
 ## What the Agent gets
@@ -20,8 +20,11 @@ Browse the web inside Auton Knowledge. The Agent can read the page you are looki
 |---|---|
 | `browser_get_page` | Title, URL and main text of the page in the panel (up to 40,000 characters by default; `max_chars` up to 200,000) |
 | `browser_get_selection` | The text selected in that page, with its title and URL |
+| `browser_get_interactive` | A bounded list of visible supported controls with short-lived opaque refs |
+| `browser_scroll` | One bounded scroll followed by a fresh interaction observation |
+| `browser_act` | One confirmed click, ordinary text fill, or select action followed by a fresh observation |
 
-Both tools wrap page text in `<<<BEGIN UNTRUSTED WEB CONTENT>>>` … `<<<END UNTRUSTED WEB CONTENT>>>` and tell the model never to follow instructions found inside it. Every call goes through Auton Knowledge's normal tool confirmation.
+All page-derived data is wrapped in `<<<BEGIN UNTRUSTED WEB CONTENT>>>` … `<<<END UNTRUSTED WEB CONTENT>>>` and marked as untrusted. Action refs belong to one observation and expire when the page changes. Every action requires a host-issued, single-use authorization tied to the exact confirmed tool input.
 
 如果面板没打开，工具会回答「浏览器面板未打开」；没有选中文字时回答「没有选中文字」，不会退回整页。
 If the page failed to load, the tools say so (with the network error) instead of reading the browser's error page; while a page is still loading, the result says that too.
@@ -37,7 +40,8 @@ If the page failed to load, the tools say so (with the network error) instead of
 ## Permissions and isolation
 
 - `web.browse` — shows web pages in this plugin's panel and lets it read the page text and your selection there. Pages run in a separate sandboxed process with their own storage, without access to Auton Knowledge or your knowledge base. Only `http` and `https` addresses open; downloads, pop-up windows, notifications, camera, microphone and other device access are refused.
-- `agent.tools` — registers the two tools above.
+- `web.interact` — observes visible controls and permits confirmed scrolling, clicking, ordinary text input and option selection. Passwords, one-time codes, payment fields, file inputs and unsupported controls are refused.
+- `agent.tools` — registers the five tools above.
 
 Runtime plugins run inside the app; permissions limit the plugin API, they are not a sandbox for the plugin's own code. Install only plugins you trust.
 
@@ -48,6 +52,7 @@ Uninstalling the plugin also clears its browsing data (cookies, storage, cache).
 - One browser panel, one page at a time; no tabs, bookmarks or history list.
 - Closing the panel closes the page. Reopening it loads the last address again, without its back/forward history or scroll position.
 - Only the top-level document is read; text inside iframes and PDF viewers is not.
+- Interaction is semantic and intentionally limited. Canvas, cross-origin iframes, drag-and-drop, uploads, downloads, browser permission prompts, CAPTCHA and arbitrary JavaScript are unsupported; use an external Computer Use workflow when those are genuinely needed.
 - The page is hidden while a dialog, menu or Settings covers the panel area.
 
 ## Development

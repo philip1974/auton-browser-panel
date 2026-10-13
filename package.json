@@ -1,6 +1,6 @@
 {
   "name": "auton-browser-panel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Browser panel runtime plugin for Auton Knowledge: browse the web in a panel and let the Agent read the page and your selection.",
