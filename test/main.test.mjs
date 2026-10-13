@@ -325,6 +325,18 @@ describe('semantic browser interaction tools', () => {
     expect(app.tools.get('browser_get_interactive').description).toMatch(/rich-text and chat editors/u);
     expect(app.tools.get('browser_scroll').description).toMatch(/SCROLL_LIMIT/u);
   });
+
+  it('should give one consistent rule for what to do after each kind of result', async () => {
+    const { app } = await load();
+    const description = app.tools.get('browser_act').description;
+
+    // A successful action already returns the next observation: observing again costs another approval.
+    expect(description).toMatch(/fresh observation.*refs.*next action/u);
+    // Nothing happened after a stale or refused result, which is what the error messages say too.
+    expect(description).toMatch(/stale or refused.*nothing happened.*observe again/u);
+    expect(description).toMatch(/unknown result or a timeout.*stop/u);
+    expect(description).not.toMatch(/Stop after an unknown, stale, or refused result/u);
+  });
 });
 
 describe('panel', () => {
