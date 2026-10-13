@@ -359,6 +359,7 @@ describe('semantic browser interaction tools', () => {
     expect(app.handles[0].calls.some(([name]) => name === 'act')).toBe(false);
     expect(app.tools.get('browser_act').inputSchema.properties.action.properties.optionName).toBeDefined();
     expect(app.tools.get('browser_act').description).toMatch(/optionName/u);
+    expect(app.tools.get('browser_act').description).toMatch(/multiple select.*adds/u);
 
     const click = { ...request, action: { kind: 'click', element: 'e1', expectedName: 'Save', optionName: 'Japan' } };
     await expect(app.tools.get('browser_act').run(click, context)).resolves.toMatch(/optionName.*select/u);

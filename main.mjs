@@ -68,7 +68,7 @@ const SCROLL_TOOL = {
 
 const ACT_TOOL = {
   name: 'browser_act',
-  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Select values must be enabled options from the exact observation, sent with their optionName (the option's visible name), which the user sees when approving. Native form-submit controls, cross-origin, popup, and download links are refused; same-origin links require the exact expectedUrl from the observation. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
+  description: `Click, fill, or select one visible control in the current Browser panel after explicit user confirmation. Select values must be enabled options from the exact observation, sent with their optionName (the option's visible name), which the user sees when approving. In a multiple select a select adds that option; it never removes the ones already chosen (see selectedText). Native form-submit controls, cross-origin, popup, and download links are refused; same-origin links require the exact expectedUrl from the observation. Fill does not support passwords, one-time codes, payment fields, files, or other sensitive controls. ${INTERACTION_NOTE}`,
   inputSchema: {
     type: 'object',
     properties: {
