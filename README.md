@@ -25,6 +25,7 @@ Browse the web inside Auton Knowledge. The Agent can read the page you are looki
 | `browser_act` | One confirmed control click, same-origin observed-link navigation, ordinary text fill, or select action followed by a fresh observation |
 
 All page-derived data is wrapped in `<<<BEGIN UNTRUSTED WEB CONTENT>>>` … `<<<END UNTRUSTED WEB CONTENT>>>` and marked as untrusted. Action refs belong to one observation and expire when the page changes. Every action requires a host-issued, single-use authorization tied to the exact confirmed tool input.
+Timed-out actions are reported as having an unknown result and must not be retried automatically. If another page operation is still running, the Agent must wait and obtain a fresh observation.
 
 如果面板没打开，工具会回答「浏览器面板未打开」；没有选中文字时回答「没有选中文字」，不会退回整页。
 If the page failed to load, the tools say so (with the network error) instead of reading the browser's error page; while a page is still loading, the result says that too.

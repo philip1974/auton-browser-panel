@@ -271,6 +271,25 @@ describe('semantic browser interaction tools', () => {
     await expect(app.tools.get('browser_act').run(request, {})).resolves.toMatch(/AUTHORIZATION_REQUIRED/u);
     expect(app.handles[0].calls).toEqual([]);
   });
+
+  it('should explain action timeout and busy results without inviting an unsafe retry', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    const request = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'click', element: 'e1', expectedName: 'Save' },
+    };
+    const context = { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } };
+    app.handles[0].readError = codedError('ACTION_TIMEOUT');
+
+    await expect(app.tools.get('browser_act').run(request, context))
+      .resolves.toMatch(/结果未知.*不要重试/u);
+
+    app.handles[0].readError = codedError('ACTION_BUSY');
+    await expect(app.tools.get('browser_act').run(request, context))
+      .resolves.toMatch(/等待.*重新观察/u);
+  });
 });
 
 describe('panel', () => {
