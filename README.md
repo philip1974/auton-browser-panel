@@ -21,7 +21,7 @@ Browse the web inside Auton Knowledge. The Agent can read the page you are looki
 | `browser_get_page` | Title, URL and main text of the page in the panel (up to 40,000 characters by default; `max_chars` up to 200,000) |
 | `browser_get_selection` | The text selected in that page, with its title and URL |
 | `browser_get_interactive` | A bounded list of visible supported controls with short-lived opaque refs, select-option snapshots, and explicit restricted-field markers |
-| `browser_scroll` | One bounded scroll followed by a fresh interaction observation |
+| `browser_scroll` | One bounded scroll followed by a fresh interaction observation; scrolls the inner area when the page itself does not scroll, and reports `SCROLL_LIMIT` when nothing moved |
 | `browser_act` | One confirmed control click, same-origin observed-link navigation, ordinary text fill, or select action followed by a fresh observation |
 
 All page-derived data is wrapped in `<<<BEGIN UNTRUSTED WEB CONTENT>>>` … `<<<END UNTRUSTED WEB CONTENT>>>` and marked as untrusted. Action refs belong to one observation and expire when the page changes. Every action requires a host-issued, single-use authorization tied to the exact confirmed tool input.
@@ -41,7 +41,7 @@ If the page failed to load, the tools say so (with the network error) instead of
 ## Permissions and isolation
 
 - `web.browse` — shows web pages in this plugin's panel and lets it read the page text and your selection there. Pages run in a separate sandboxed process with their own storage, without access to Auton Knowledge or your knowledge base. Only `http` and `https` addresses open; downloads, pop-up windows, notifications, camera, microphone and other device access are refused.
-- `web.interact` — observes visible controls and permits confirmed scrolling, control clicks, same-origin observed-link navigation, ordinary text input and selection of enabled options from the exact observation. Passwords, one-time codes, payment and file fields are visibly marked `restricted` and refused; native form submission, cross-origin, popup and download links and unsupported controls are also refused.
+- `web.interact` — observes visible controls and permits confirmed scrolling, control clicks, same-origin observed-link navigation, ordinary text input and selection of enabled options from the exact observation. Text fields show their current value; disabled controls are listed as disabled and controls covered by a dialog or overlay are left out. Passwords, one-time codes, payment and file fields are visibly marked `restricted` and refused; native form submission, cross-origin, popup and download links and unsupported controls are also refused.
 - `agent.tools` — registers the five tools above.
 
 Runtime plugins run inside the app; permissions limit the plugin API, they are not a sandbox for the plugin's own code. Install only plugins you trust.

@@ -295,6 +295,29 @@ describe('semantic browser interaction tools', () => {
     await expect(app.tools.get('browser_act').run(request, context))
       .resolves.toMatch(/等待.*重新观察/u);
   });
+
+  it('should say the page cannot scroll further when the host reports the scroll limit', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    const request = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'scroll', deltaX: 0, deltaY: 600 },
+    };
+    const context = { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } };
+    app.handles[0].readError = codedError('SCROLL_LIMIT');
+
+    await expect(app.tools.get('browser_scroll').run(request, context))
+      .resolves.toMatch(/已经滚到头.*SCROLL_LIMIT/u);
+  });
+
+  it('should tell the model about disabled controls and text field values', async () => {
+    const { app } = await load();
+
+    expect(app.tools.get('browser_get_interactive').description).toMatch(/disabled: true/u);
+    expect(app.tools.get('browser_get_interactive').description).toMatch(/current value/u);
+    expect(app.tools.get('browser_scroll').description).toMatch(/SCROLL_LIMIT/u);
+  });
 });
 
 describe('panel', () => {
