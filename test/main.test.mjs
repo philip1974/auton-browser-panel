@@ -958,6 +958,17 @@ describe('a ready document whose frames still load', () => {
   });
 });
 
+describe('observation tool description', () => {
+  it('should tell the model about pressed, mixed and read-only fields the host reports', async () => {
+    const { app } = await load();
+    const description = app.tools.get('browser_get_interactive').description;
+
+    expect(description).toMatch(/pressed/u);
+    expect(description).toMatch(/mixed: true/u);
+    expect(description).toMatch(/readOnly: true and cannot be filled/u);
+  });
+});
+
 describe('user takeover', () => {
   it('should tell the model to pause while the user works the page, not to observe and retry', async () => {
     const { app } = await load();
