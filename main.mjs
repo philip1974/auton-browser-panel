@@ -38,7 +38,7 @@ const INTERACTION_NOTE = `Element names, page state, and the Title and URL lines
 
 const OBSERVE_TOOL = {
   name: 'browser_get_interactive',
-  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; text fields (including rich-text and chat editors) include their current value (cut to 256 characters), toggles such as switches report checked, disclosure and menu buttons report expanded, tabs and options report selected, select controls include a bounded option snapshot, disabled controls are listed with disabled: true and cannot be used yet, controls covered by a dialog or overlay are left out, and password, verification, payment, and file fields are marked restricted and cannot be filled. ${INTERACTION_NOTE}`,
+  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; text fields (including rich-text and chat editors) include their current value (cut to 256 characters), toggles such as switches report checked, disclosure and menu buttons report expanded, tabs and options report selected, select controls include a bounded option snapshot, disabled controls are listed with disabled: true and cannot be used yet, controls covered by a dialog or overlay are left out, password, verification, payment, and file fields are marked restricted and cannot be filled, and controls inside iframes (same-origin ones too) are not listed. ${INTERACTION_NOTE}`,
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
 };
 
@@ -110,6 +110,7 @@ const MESSAGES = {
   selectNeedsOptionName: '选择下拉选项时必须同时给出 optionName（观察结果里该选项的 name）：用户批准时看到的是这个可见文字。请带上 optionName 重新调用，不需要重新观察。',
   actionUnknown: '浏览器操作的结果无法确认（ACTION_UNKNOWN）。请停止，不要重新观察后重试这个动作；先让用户检查页面。',
   scrollLimit: '页面在这个方向上已经滚到头了，或没有可以滚动的区域（SCROLL_LIMIT）。请重新观察页面，不要沿同一方向继续滚动。',
+  userTakeover: '浏览器操作被拒绝（USER_TAKEOVER）：用户正在操作这个页面。请暂停，等用户说可以继续后再重新观察；不要自动重试。',
   actionBusy: '浏览器正忙于上一次页面操作（ACTION_BUSY）。请等待完成后重新观察页面，不要复用旧引用。',
   noText: (url) => `浏览器面板里的页面没有可读的文字：${neutralize(url)}。它可能是 PDF、图片，或由脚本绘制的内容；可以请用户选中文字或复制需要的部分。`,
   loadFailed: (url, code) => `浏览器面板里的网页加载失败（${neutralize(code)}）：${neutralize(url)}。请让用户检查网址或网络后重新打开。`,
@@ -120,10 +121,16 @@ function readCode(error) {
   return typeof code === 'string' ? code : 'UNKNOWN';
 }
 
+// The main document is not ready yet. Hosts before `documentLoading` only report every frame.
+function documentLoading(state) {
+  if (state === null || state === undefined) return false;
+  return typeof state.documentLoading === 'boolean' ? state.documentLoading : state.loading === true;
+}
+
 function failure(error, view) {
   const code = readCode(error);
-  // The host waits for a pending load before reading, so a slow page times out the read.
-  if (code === 'READ_TIMEOUT' && view.state?.loading === true) return MESSAGES.READ_TIMEOUT_LOADING;
+  // A read during the document's own load can time out; an ad iframe that never finishes cannot cause it.
+  if (code === 'READ_TIMEOUT' && documentLoading(view.state)) return MESSAGES.READ_TIMEOUT_LOADING;
   // The panel was closed while the read was in flight.
   if (code === 'VIEW_NOT_FOUND') return MESSAGES.panelClosed;
   return MESSAGES[code] ?? `读取网页失败（${code}）。`;
@@ -514,7 +521,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
 
   loadingNote(view) {
     const state = view.state;
-    return state !== null && state !== undefined && state.loading
+    return documentLoading(state)
       ? [`Note: the panel was still loading ${neutralize(state.url)} when this was read; the text may be incomplete.`]
       : [];
   }
@@ -598,6 +605,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       if (code === 'ACTION_BUSY') return MESSAGES.actionBusy;
       if (code === 'SCROLL_LIMIT') return MESSAGES.scrollLimit;
       if (code === 'ACTION_UNKNOWN') return MESSAGES.actionUnknown;
+      if (code === 'USER_TAKEOVER') return MESSAGES.userTakeover;
       return `浏览器操作失败（${neutralize(code)}）。请重新观察页面；不要复用旧引用或自动重试未知动作。`;
     }
   }

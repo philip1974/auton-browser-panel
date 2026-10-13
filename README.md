@@ -53,7 +53,7 @@ Uninstalling the plugin also clears its browsing data (cookies, storage, cache).
 - One browser panel, one page at a time; no tabs, bookmarks or history list.
 - Closing the panel closes the page. Reopening it loads the last address again, without its back/forward history or scroll position.
 - Only the top-level document is read; text inside iframes and PDF viewers is not.
-- Interaction is semantic and intentionally limited. Canvas, cross-origin iframes, drag-and-drop, uploads, downloads, browser permission prompts, CAPTCHA and arbitrary JavaScript are unsupported; use an external Computer Use workflow when those are genuinely needed.
+- Interaction is semantic and intentionally limited. Canvas, iframes (same-origin ones included: their controls are not listed), drag-and-drop, uploads, downloads, browser permission prompts, CAPTCHA and arbitrary JavaScript are unsupported; use an external Computer Use workflow when those are genuinely needed.
 - The page is hidden while a dialog, menu or Settings covers the panel area.
 
 ## Development

@@ -936,6 +936,46 @@ describe('read timeout while loading', () => {
   });
 });
 
+describe('a ready document whose frames still load', () => {
+  it('should not call the text incomplete or the timeout a slow load once the document is ready', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    // An ad iframe or a stalled image keeps the spinner going after the article is readable.
+    app.handles[0].emit({ ...idle, url: 'https://example.com/article', loading: true, documentLoading: false });
+
+    const page = await app.tools.get('browser_get_page').run({});
+    expect(page).not.toMatch(/still loading/u);
+    app.handles[0].readError = codedError('READ_TIMEOUT');
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/过大或卡住/u);
+  });
+
+  it('should still warn while the document itself loads', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].emit({ ...idle, url: 'https://example.com/next', loading: true, documentLoading: true });
+
+    await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/still loading/u);
+  });
+});
+
+describe('user takeover', () => {
+  it('should tell the model to pause while the user works the page, not to observe and retry', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].readError = codedError('USER_TAKEOVER');
+    const request = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'click', element: 'e1', expectedName: 'Save' },
+    };
+
+    const result = await app.tools.get('browser_act').run(request, { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } });
+
+    expect(result).toContain('USER_TAKEOVER');
+    expect(result).toMatch(/用户正在操作/u);
+  });
+});
+
 describe('toolbar icons', () => {
   it('should draw every button with the same svg icon size and swap reload for stop', async () => {
     const { app } = await load();
