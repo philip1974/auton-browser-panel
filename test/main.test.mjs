@@ -128,6 +128,7 @@ class FakeHandle {
   async act(request, authorization) {
     this.calls.push(['act', request, authorization]);
     if (this.readError !== null) throw this.readError;
+    if (this.actReceipt !== undefined) return this.actReceipt;
     return { status: 'committed', afterObservation: this.observation };
   }
 
@@ -270,6 +271,23 @@ describe('semantic browser interaction tools', () => {
       ['act', scroll, authorization],
       ['act', click, authorization],
     ]);
+  });
+
+  it('should tell the model to observe again when the action ran but the page it would show is not its own', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].actReceipt = { status: 'committed' };
+    const click = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'click', element: 'e1', expectedName: 'Save' },
+    };
+
+    const result = await app.tools.get('browser_act').run(click, { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } });
+
+    expect(result).toContain('Status: committed');
+    expect(result).toMatch(/observe again/u);
+    expect(result).not.toContain('<<<BEGIN UNTRUSTED WEB CONTENT>>>');
   });
 
   it('should fail closed without a host-issued action authorization or an open panel', async () => {
