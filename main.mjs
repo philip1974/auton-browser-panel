@@ -84,7 +84,7 @@ const ACT_TOOL = {
           expectedUrl: { type: 'string', format: 'uri', maxLength: 2048, description: 'For a link click, the exact navigation.url returned for this ref.' },
           text: { type: 'string', maxLength: 20000 },
           value: { type: 'string', maxLength: 2048 },
-          optionName: { type: 'string', maxLength: 256, description: 'Required for select: the exact name of that option in the observation. The user approves this text.' },
+          optionName: { type: 'string', maxLength: 256, description: 'Required for select: the exact name of that option in the observation. The user approves this text. When optionsTruncated is true and the option you need is not listed, give its exact visible name here and the same text as value; the page must have exactly one option with that name.' },
         },
         required: ['kind', 'element', 'expectedName'],
         additionalProperties: false,

@@ -981,6 +981,16 @@ describe('interaction note', () => {
   });
 });
 
+describe('select beyond the listed options', () => {
+  it('should tell the model how to choose an option a truncated list left out', async () => {
+    const { app } = await load();
+    const optionName = app.tools.get('browser_act').inputSchema.properties.action.properties.optionName.description;
+
+    expect(optionName).toMatch(/optionsTruncated/u);
+    expect(optionName).toMatch(/exact visible name/u);
+  });
+});
+
 describe('user takeover', () => {
   it('should tell the model to pause while the user works the page, not to observe and retry', async () => {
     const { app } = await load();
