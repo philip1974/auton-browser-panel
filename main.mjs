@@ -97,7 +97,7 @@ const ACT_TOOL = {
 
 const MESSAGES = {
   panelClosed: '浏览器面板未打开。请让用户在 Auton Knowledge 右栏打开「Browser」面板并加载网页后再试。',
-  noSelection: '没有选中文字。请让用户先在浏览器面板的页面里选中一段文字。',
+  noSelection: '没有选中文字，或选区包含密码、密钥、验证码等敏感字段（出于安全不会读取）。请让用户在浏览器面板的页面里选中一段不含这类字段的文字。',
   VIEW_LOADING: '浏览器面板还没有打开网页，或页面仍在加载。请让用户先打开网页后再试。',
   VIEW_CRASHED: '浏览器面板里的页面崩溃了。请让用户刷新页面后再试。',
   READ_TIMEOUT: '读取网页超时（页面可能过大或卡住）。可以稍后再试。',

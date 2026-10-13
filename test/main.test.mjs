@@ -613,6 +613,7 @@ describe('browser_get_selection', () => {
     const result = await app.tools.get('browser_get_selection').run({});
 
     expect(result).toMatch(/没有选中文字/u);
+    expect(result).toMatch(/敏感字段/u);
     expect(result).not.toContain('UNTRUSTED');
     expect(app.handles[0].calls).toEqual([['readSelection']]);
   });
