@@ -108,6 +108,7 @@ const MESSAGES = {
   actionTimeout: '浏览器操作超时（ACTION_TIMEOUT），结果未知。请停止且不要重试，让用户先检查页面。',
   optionNameOnlyForSelect: 'optionName 只用于 select；点击和填写不要带它。请去掉 optionName 后重新调用，不需要重新观察。',
   selectNeedsOptionName: '选择下拉选项时必须同时给出 optionName（观察结果里该选项的 name）：用户批准时看到的是这个可见文字。请带上 optionName 重新调用，不需要重新观察。',
+  actionUnknown: '浏览器操作的结果无法确认（ACTION_UNKNOWN）。请停止，不要重新观察后重试这个动作；先让用户检查页面。',
   scrollLimit: '页面在这个方向上已经滚到头了，或没有可以滚动的区域（SCROLL_LIMIT）。请重新观察页面，不要沿同一方向继续滚动。',
   actionBusy: '浏览器正忙于上一次页面操作（ACTION_BUSY）。请等待完成后重新观察页面，不要复用旧引用。',
   noText: (url) => `浏览器面板里的页面没有可读的文字：${neutralize(url)}。它可能是 PDF、图片，或由脚本绘制的内容；可以请用户选中文字或复制需要的部分。`,
@@ -150,7 +151,10 @@ function formatBlock(snapshot, extraLines = []) {
  */
 function formatObservation(observation, extraLines = []) {
   const elements = observation.elements.map((element) => JSON.stringify(element)).join(',\n');
-  const text = `{"viewport":${JSON.stringify(observation.viewport)},"truncated":${JSON.stringify(observation.truncated)},"elements":[\n${elements}\n]}`;
+  // Marker-like runs become JSON escapes, not look-alike characters: the block cannot be closed early,
+  // and a name such as "更多>>>" still decodes to exactly what the page compares.
+  const text = `{"viewport":${JSON.stringify(observation.viewport)},"truncated":${JSON.stringify(observation.truncated)},"elements":[\n${elements}\n]}`
+    .replaceAll('<<<', '\\u003c\\u003c\\u003c').replaceAll('>>>', '\\u003e\\u003e\\u003e');
   return formatBlock({
     title: observation.title,
     url: observation.url,
@@ -591,6 +595,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       if (code === 'ACTION_TIMEOUT') return MESSAGES.actionTimeout;
       if (code === 'ACTION_BUSY') return MESSAGES.actionBusy;
       if (code === 'SCROLL_LIMIT') return MESSAGES.scrollLimit;
+      if (code === 'ACTION_UNKNOWN') return MESSAGES.actionUnknown;
       return `浏览器操作失败（${neutralize(code)}）。请重新观察页面；不要复用旧引用或自动重试未知动作。`;
     }
   }
