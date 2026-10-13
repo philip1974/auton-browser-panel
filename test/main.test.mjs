@@ -969,6 +969,17 @@ describe('observation tool description', () => {
   });
 });
 
+describe('interaction note', () => {
+  it('should not promise that the returned observation shows what a slow page does later', async () => {
+    const { app } = await load();
+    const description = app.tools.get('browser_act').description;
+
+    expect(description).not.toMatch(/instead of observing again/u);
+    expect(description).toMatch(/may still be working/u);
+    expect(description).toMatch(/never repeat a click that may have submitted/u);
+  });
+});
+
 describe('user takeover', () => {
   it('should tell the model to pause while the user works the page, not to observe and retry', async () => {
     const { app } = await load();
