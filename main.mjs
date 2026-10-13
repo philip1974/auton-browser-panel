@@ -115,6 +115,7 @@ function icon(name) {
 // so a language change always reaches a fresh render). Agent-facing text stays as it is.
 const UI = {
   en: {
+    title: 'Browser', commandTitle: 'Browser: open panel', commandDescription: 'Open the Browser panel in the right dock.',
     back: 'Back', forward: 'Forward', reload: 'Reload', stop: 'Stop', address: 'Web address',
     addressPlaceholder: 'Enter a web address, e.g. en.wikipedia.org',
     placeholder: 'Type an address above and press Enter. The Agent can then read this page and your selection.',
@@ -135,6 +136,7 @@ const UI = {
     },
   },
   zh: {
+    title: '浏览器', commandTitle: '浏览器：打开面板', commandDescription: '在右侧栏打开浏览器面板。',
     back: '后退', forward: '前进', reload: '刷新', stop: '停止', address: '网址',
     addressPlaceholder: '输入网址，例如 zh.wikipedia.org',
     placeholder: '在上方输入网址并按回车。之后 Agent 就能读取这个页面和你选中的文字。',
@@ -155,6 +157,7 @@ const UI = {
     },
   },
   ja: {
+    title: 'ブラウザ', commandTitle: 'ブラウザ: パネルを開く', commandDescription: '右側にブラウザパネルを開きます。',
     back: '戻る', forward: '進む', reload: '再読み込み', stop: '中止', address: 'ウェブアドレス',
     addressPlaceholder: 'ウェブアドレスを入力（例: ja.wikipedia.org）',
     placeholder: '上にアドレスを入力して Enter を押してください。Agent がこのページと選択したテキストを読めるようになります。',
@@ -175,6 +178,7 @@ const UI = {
     },
   },
   ko: {
+    title: '브라우저', commandTitle: '브라우저: 패널 열기', commandDescription: '오른쪽에 브라우저 패널을 엽니다.',
     back: '뒤로', forward: '앞으로', reload: '새로고침', stop: '중지', address: '웹 주소',
     addressPlaceholder: '웹 주소 입력 (예: ko.wikipedia.org)',
     placeholder: '위에 주소를 입력하고 Enter를 누르세요. 그러면 Agent가 이 페이지와 선택한 텍스트를 읽을 수 있습니다.',
@@ -196,8 +200,8 @@ const UI = {
   },
 };
 
-function uiText() {
-  const lang = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+function uiText(locale = document.documentElement.lang) {
+  const lang = (locale || 'en').toLowerCase().split('-')[0];
   return UI[lang] ?? UI.en;
 }
 
@@ -226,21 +230,30 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     const saved = await this.loadData();
     this.lastUrl = saved !== null && typeof saved === 'object' && typeof saved.lastUrl === 'string' ? saved.lastUrl : '';
 
-    this.addPanel({
-      id: PANEL_ID,
-      title: 'Browser',
-      location: 'right',
-      icon: '🌐',
-      render: (container) => this.renderPanel(container),
-    });
-    this.addCommand({
-      id: 'open',
-      title: 'Browser: open panel',
-      description: 'Open the Browser panel in the right dock.',
-      callback: () => { this.openPanel(PANEL_ID); },
-    });
+    this.registerSurfaces(uiText());
+    // Titles live in the app's panel list and command palette; follow the language there too.
+    this.onEvent('appearance.locale-changed', ({ locale }) => this.registerSurfaces(uiText(locale)));
     await this.addAgentTool({ ...PAGE_TOOL, run: (input) => this.readPage(input) });
     await this.addAgentTool({ ...SELECTION_TOOL, run: () => this.readSelection() });
+  }
+
+  registerSurfaces(text) {
+    for (const surface of this.surfaces ?? []) surface.dispose();
+    this.surfaces = [
+      this.addPanel({
+        id: PANEL_ID,
+        title: text.title,
+        location: 'right',
+        icon: '🌐',
+        render: (container) => this.renderPanel(container),
+      }),
+      this.addCommand({
+        id: 'open',
+        title: text.commandTitle,
+        description: text.commandDescription,
+        callback: () => { this.openPanel(PANEL_ID); },
+      }),
+    ];
   }
 
   renderPanel(container) {

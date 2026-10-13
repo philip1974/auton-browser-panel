@@ -13,13 +13,21 @@ class FakePlugin {
   }
 
   addPanel(spec) {
+    if (this.app.panels.some((panel) => panel.id === spec.id)) throw new Error(`duplicate panel ${spec.id}`);
     this.app.panels.push(spec);
-    return this.register({ dispose: () => undefined });
+    return this.register({ dispose: () => { this.app.panels = this.app.panels.filter((panel) => panel !== spec); } });
   }
 
   addCommand(spec) {
+    if (this.app.commands.some((command) => command.id === spec.id)) throw new Error(`duplicate command ${spec.id}`);
     this.app.commands.push(spec);
-    return this.register({ dispose: () => undefined });
+    return this.register({ dispose: () => { this.app.commands = this.app.commands.filter((command) => command !== spec); } });
+  }
+
+  onEvent(name, listener) {
+    const entry = { name, listener };
+    this.app.events.push(entry);
+    return this.register({ dispose: () => { this.app.events = this.app.events.filter((item) => item !== entry); } });
   }
 
   openPanel(id) {
@@ -107,6 +115,8 @@ function makeApp({ webViews = true, agentTools = true, stored = null } = {}) {
   return {
     panels: [],
     commands: [],
+    events: [],
+    emit(name, payload) { for (const entry of this.events) if (entry.name === name) entry.listener(payload); },
     opened: [],
     tools: new Map(),
     stored,
@@ -789,5 +799,32 @@ describe('truncated length', () => {
 
     app.handles[0].page = { ...app.handles[0].page, lengthIsLowerBound: false };
     await expect(app.tools.get('browser_get_page').run({})).resolves.toMatch(/characters of 5866\./u);
+  });
+});
+
+describe('panel and command titles', () => {
+  it('should register the panel and command titles in the app language', async () => {
+    document.documentElement.lang = 'zh';
+    const { app } = await load();
+
+    expect(app.panels[0].title).toBe('浏览器');
+    expect(app.commands[0].title).toMatch(/浏览器/u);
+  });
+
+  it('should re-register them when the app language changes and keep the same ids', async () => {
+    const { app } = await load();
+    expect(app.panels[0].title).toBe('Browser');
+
+    app.emit('appearance.locale-changed', { locale: 'ja' });
+
+    expect(app.panels).toHaveLength(1);
+    expect(app.panels[0]).toMatchObject({ id: 'browser', title: 'ブラウザ', location: 'right' });
+    expect(app.commands).toHaveLength(1);
+    expect(app.commands[0]).toMatchObject({ id: 'open' });
+    expect(app.commands[0].title).toMatch(/ブラウザ/u);
+    app.emit('appearance.locale-changed', { locale: 'ko' });
+    expect(app.panels[0].title).toBe('브라우저');
+    app.commands[0].callback();
+    expect(app.opened).toEqual(['browser']);
   });
 });
