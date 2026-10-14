@@ -38,7 +38,7 @@ const INTERACTION_NOTE = `Element names, page state, and the Title and URL lines
 
 const OBSERVE_TOOL = {
   name: 'browser_get_interactive',
-  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; text fields (including rich-text and chat editors) include their current value (cut to 256 characters), toggles such as switches report checked (an indeterminate checkbox reports mixed: true), toggle buttons report pressed (true, false or "mixed"), disclosure and menu buttons report expanded, tabs and options report selected, read-only text fields report readOnly: true and cannot be filled, date, time, range and color pickers are text fields that take the browser's value format (2026-10-20, 13:30, 2026-10, 2026-W43, 2026-10-20T13:30, #rrggbb): a date or time the page refused shows an empty value, range values snap to the field's step and limits, and a color must be #rrggbb or the fill is refused, select controls include a bounded option snapshot, disabled controls are listed with disabled: true and cannot be used yet, controls covered by a dialog or overlay are left out, password, verification, payment, and file fields are marked restricted and cannot be filled, and controls inside iframes (same-origin ones too) are not listed. ${INTERACTION_NOTE}`,
+  description: `List the visible supported controls in the web page currently shown in the user's Browser panel. Returns opaque short-lived refs, not selectors; text fields (including rich-text and chat editors) include their current value (cut to 256 characters), toggles such as switches report checked (an indeterminate checkbox reports mixed: true), toggle buttons report pressed (true, false or "mixed"), disclosure and menu buttons report expanded, tabs and options report selected, read-only text fields report readOnly: true and cannot be filled, date, time, range and color pickers are text fields that take the browser's value format (2026-10-20, 13:30, 2026-10, 2026-W43, 2026-10-20T13:30, #rrggbb): a date or time the page refused shows an empty value, range values snap to the field's step and limits, and a color must be #rrggbb or the fill is refused, select controls include a bounded option snapshot, disabled controls are listed with disabled: true and cannot be used yet, controls covered by a dialog or overlay are left out, password, verification, payment, file and other secret fields (tokens, PINs, card expiry, recovery codes) are marked restricted and cannot be filled, and controls inside iframes (same-origin ones too) are not listed. ${INTERACTION_NOTE}`,
   inputSchema: { type: 'object', properties: {}, additionalProperties: false },
 };
 
@@ -110,6 +110,7 @@ const MESSAGES = {
   selectNeedsOptionName: '选择下拉选项时必须同时给出 optionName（观察结果里该选项的 name）：用户批准时看到的是这个可见文字。请带上 optionName 重新调用，不需要重新观察。',
   actionUnknown: '浏览器操作的结果无法确认（ACTION_UNKNOWN）。请停止，不要重新观察后重试这个动作；先让用户检查页面。',
   scrollLimit: '页面在这个方向上已经滚到头了，或没有可以滚动的区域（SCROLL_LIMIT）。请重新观察页面，不要沿同一方向继续滚动。',
+  sensitiveRefused: '浏览器操作被拒绝（SENSITIVE_FIELD_REFUSED）：这是密码、验证码、支付或其它敏感字段，助手不能读写。请用户自己填写，不要重新观察后重试。',
   userTakeover: '浏览器操作被拒绝（USER_TAKEOVER）：用户正在操作这个页面。请暂停，等用户说可以继续后再重新观察；不要自动重试。',
   actionBusy: '浏览器正忙于上一次页面操作（ACTION_BUSY）。请等待完成后重新观察页面，不要复用旧引用。',
   noText: (url) => `浏览器面板里的页面没有可读的文字：${neutralize(url)}。它可能是 PDF、图片，或由脚本绘制的内容；可以请用户选中文字或复制需要的部分。`,
@@ -606,6 +607,7 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
       if (code === 'SCROLL_LIMIT') return MESSAGES.scrollLimit;
       if (code === 'ACTION_UNKNOWN') return MESSAGES.actionUnknown;
       if (code === 'USER_TAKEOVER') return MESSAGES.userTakeover;
+      if (code === 'SENSITIVE_FIELD_REFUSED') return MESSAGES.sensitiveRefused;
       return `浏览器操作失败（${neutralize(code)}）。请重新观察页面；不要复用旧引用或自动重试未知动作。`;
     }
   }

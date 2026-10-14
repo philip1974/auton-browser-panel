@@ -995,6 +995,25 @@ describe('select beyond the listed options', () => {
   });
 });
 
+describe('restricted fields', () => {
+  it('should tell the model to ask the user to fill a restricted field, not to observe again', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].readError = codedError('SENSITIVE_FIELD_REFUSED');
+    const request = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'fill', element: 'e1', expectedName: 'Password', text: 'x' },
+    };
+
+    const result = await app.tools.get('browser_act').run(request, { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } });
+
+    expect(result).toContain('SENSITIVE_FIELD_REFUSED');
+    expect(result).toMatch(/请用户自己填写/u);
+    expect(app.tools.get('browser_get_interactive').description).toMatch(/tokens, PINs/u);
+  });
+});
+
 describe('user takeover', () => {
   it('should tell the model to pause while the user works the page, not to observe and retry', async () => {
     const { app } = await load();
