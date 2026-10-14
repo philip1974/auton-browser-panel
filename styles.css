@@ -13,7 +13,7 @@
   align-items: center;
   gap: 4px;
   padding: 8px;
-  border-bottom: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
+  border-bottom: var(--agent-border-hairline, 1px solid var(--agent-color-border, rgba(127, 127, 127, 0.3)));
 }
 
 [data-plugin-panel="dev.auton.browser-panel:browser"] [data-browser-action] {
@@ -24,7 +24,7 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
+  border: var(--agent-border-hairline, 1px solid var(--agent-color-border, rgba(127, 127, 127, 0.3)));
   border-radius: var(--agent-radius-sm, 4px);
   background: var(--agent-color-bg-elevated, transparent);
   color: var(--agent-color-text-primary, inherit);
@@ -45,7 +45,7 @@
   min-width: 0;
   height: 28px;
   padding: 0 8px;
-  border: var(--agent-border-hairline, 1px) solid var(--agent-color-border, rgba(127, 127, 127, 0.3));
+  border: var(--agent-border-hairline, 1px solid var(--agent-color-border, rgba(127, 127, 127, 0.3)));
   border-radius: var(--agent-radius-sm, 4px);
   background: var(--agent-color-bg, transparent);
   color: var(--agent-color-text-primary, inherit);
