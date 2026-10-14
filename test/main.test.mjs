@@ -290,6 +290,38 @@ describe('semantic browser interaction tools', () => {
     expect(result).not.toContain('<<<BEGIN UNTRUSTED WEB CONTENT>>>');
   });
 
+  it('should offer Enter in a field and forward it with its authorization', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    const authorization = { token: '22222222-2222-4222-8222-222222222222' };
+    const press = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'press', element: 'e2', expectedName: 'Search', key: 'Enter' },
+    };
+    const schema = app.tools.get('browser_act').inputSchema.properties.action.properties;
+
+    expect(schema.kind.enum).toContain('press');
+    expect(schema.key).toMatchObject({ type: 'string', enum: ['Enter'] });
+    await expect(app.tools.get('browser_act').run(press, { webInteractionAuthorization: authorization }))
+      .resolves.toContain('Status: committed');
+    expect(app.handles[0].calls).toEqual([['act', press, authorization]]);
+  });
+
+  it('should explain a refused Enter that would send the form to another site', async () => {
+    const { app } = await load();
+    renderPanel(app);
+    app.handles[0].readError = Object.assign(new Error('refused'), { code: 'ACTION_UNSUPPORTED' });
+    const press = {
+      observationId: '11111111-1111-4111-8111-111111111111',
+      pageUrl: 'https://example.com/a',
+      action: { kind: 'press', element: 'e2', expectedName: 'Search', key: 'Enter' },
+    };
+
+    await expect(app.tools.get('browser_act').run(press, { webInteractionAuthorization: { token: '22222222-2222-4222-8222-222222222222' } }))
+      .resolves.toMatch(/其他网站|another site/u);
+  });
+
   it('should fail closed without a host-issued action authorization or an open panel', async () => {
     const { app } = await load();
     const request = {
@@ -980,7 +1012,7 @@ describe('interaction note', () => {
     expect(description).not.toMatch(/instead of observing again/u);
     expect(description).toMatch(/may still be working/u);
     expect(description).toMatch(/scrolls are observed at once/u);
-    expect(description).toMatch(/never repeat a click or fill that may have submitted/u);
+    expect(description).toMatch(/never repeat a click, fill or press that may have submitted/u);
   });
 });
 
