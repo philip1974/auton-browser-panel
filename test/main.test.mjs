@@ -41,9 +41,10 @@ class FakePlugin {
     return this.register({ dispose: () => undefined });
   }
 
-  createWebView(container) {
+  createWebView(container, options) {
     if (this.app.webViews === undefined) throw new Error('runtime plugin requires web.browse permission');
-    return this.register(this.app.webViews.create(container));
+    this.app.createWebViewCalls.push([...arguments]);
+    return this.register(this.app.webViews.create(container, options));
   }
 
   async loadData() {
@@ -147,8 +148,17 @@ class FakeHandle {
   }
 }
 
-function makeApp({ webViews = true, agentTools = true, stored = null } = {}) {
+function makeApp({ webViews = true, webViewCapabilities, agentTools = true, stored = null } = {}) {
   const handles = [];
+  const webViewsApi = webViews ? {
+    ...(webViewCapabilities === undefined ? {} : { capabilities: webViewCapabilities }),
+    create: (container, options) => {
+      const handle = new FakeHandle(container);
+      handle.options = options;
+      handles.push(handle);
+      return handle;
+    },
+  } : undefined;
   return {
     panels: [],
     commands: [],
@@ -158,8 +168,9 @@ function makeApp({ webViews = true, agentTools = true, stored = null } = {}) {
     tools: new Map(),
     stored,
     handles,
+    createWebViewCalls: [],
     ...(agentTools ? { agentTools: {} } : {}),
-    ...(webViews ? { webViews: { create: (container) => { const handle = new FakeHandle(container); handles.push(handle); return handle; } } } : {}),
+    ...(webViews ? { webViews: webViewsApi } : {}),
   };
 }
 
@@ -541,6 +552,24 @@ describe('panel', () => {
     await tick();
 
     expect(app.handles[0].calls).toEqual([]);
+  });
+
+  it('should create the web view with one argument when share-selection capability is absent', async () => {
+    const { app } = await load();
+    const { container } = renderPanel(app);
+    const view = container.querySelector('[data-browser-view]');
+
+    expect(app.createWebViewCalls).toEqual([[view]]);
+    expect(app.handles[0].options).toBeUndefined();
+  });
+
+  it('should request shared web selections when the host supports them', async () => {
+    const { app } = await load({ webViewCapabilities: { shareSelection: true } });
+    const { container } = renderPanel(app);
+    const view = container.querySelector('[data-browser-view]');
+
+    expect(app.createWebViewCalls).toEqual([[view, { shareSelection: true }]]);
+    expect(app.handles[0].options).toEqual({ shareSelection: true });
   });
 
   it('should dispose the view on cleanup', async () => {

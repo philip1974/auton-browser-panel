@@ -400,7 +400,9 @@ export default class BrowserPanelPlugin extends globalThis.autonKnowledge.Plugin
     toolbar.append(back, forward, reload, address, external, progress);
     container.append(toolbar, error, placeholder, view);
 
-    const handle = this.createWebView(view);
+    const handle = this.app.webViews.capabilities?.shareSelection === true
+      ? this.createWebView(view, { shareSelection: true })
+      : this.createWebView(view);
     this.activeView = handle;
     // Older Auton Knowledge versions have no way to hand a page to the system browser.
     if (typeof handle.openExternal !== 'function') external.remove();

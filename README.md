@@ -38,6 +38,12 @@ If the page failed to load, the tools say so (with the network error) instead of
 - **Open in browser** (the arrow-out button) hands the current page to your system browser — use it for downloads, which the panel refuses and tells you so.
 - The panel follows the app language (English, 中文, 日本語, 한국어).
 
+## Shared page selections
+
+On Auton Knowledge 0.3.0 or newer, Browser Panel enables shared page selections. When you select text in a web page and right-click it, other plugins can offer selection actions, such as saving the text to a vocabulary list. The selected text, sentence, page title and URL are shared only after you choose one of those actions. On older Auton Knowledge versions this menu item does not appear, and the rest of Browser Panel keeps working as before.
+
+在 Auton Knowledge 0.3.0 或更新版本中，Browser Panel 会开启网页选区共享。你在网页里选中文字并右键时，其它插件可以提供选区动作，例如把文字收进生词本。只有在你点击某个动作后，选中的文字、所在句、页面标题和 URL 才会交给对应插件。旧版 Auton Knowledge 不会出现这一项，其余功能保持不变。
+
 ## Permissions and isolation
 
 - `web.browse` — shows web pages in this plugin's panel and lets it read the page text and your selection there. Pages run in a separate sandboxed process with their own storage, without access to Auton Knowledge or your knowledge base. Only `http` and `https` addresses open; downloads, pop-up windows, notifications, camera, microphone and other device access are refused.
